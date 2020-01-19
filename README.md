@@ -1,6 +1,6 @@
 # @dungeon bot
 
-Slack bot to interface with AI Dungeon.
+(extremely WIP, code is gross - will be refactored) Slack bot to interface with AI Dungeon.
 
 Setup:
 
@@ -15,12 +15,6 @@ Ideas:
 - Can make the dungeon run you for only, for you + friends, or for anyone to play. Default to for you only. (so people can comment in real-time in the Slack thread)
 - Can play via DM (but perhaps make it more expensive to do so?)
 - Store data in Airtable
-
-Key flows:
-
-- User mentions @dungeon asking for help
-- User mentions @dungeon incorrectly
-- ..more
 
 Other asides:
 
