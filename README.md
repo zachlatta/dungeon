@@ -25,7 +25,8 @@ Other asides:
 
 To-dos:
 
-- [ ] Most basic flow working
+- [x] Most basic flow working
+- [ ] Working DB for multiple sessions
 
 ---
 
