@@ -19,6 +19,8 @@ import (
 	"github.com/nlopes/slack"
 )
 
+const CostToPlay = 5 // in GP
+
 // AIRTABLE DB //
 
 type DB struct {
@@ -524,7 +526,7 @@ func ParseReceiveMoneyMsg(m *slack.MessageEvent) (*ReceiveMoneyMsg, bool) {
 
 	// check the details, make sure this transfer actually happened for the right amount
 	// TODO: figure out better way to work with banker user ID TODO: dynamically get our user ID
-	if m.User != "UH50T81A6" || recipientUserID != "USH186XSP" || gpAmount != 5 {
+	if m.User != "UH50T81A6" || recipientUserID != "USH186XSP" || gpAmount != CostToPlay {
 		return nil, false
 	}
 
@@ -673,7 +675,7 @@ func main() {
 					msg.ThreadTimestamp,
 					creator,
 					companions,
-					5, // TODO gp amount, make a constant or something
+					CostToPlay,
 					msg.Prompt,
 				)
 
@@ -688,7 +690,7 @@ func main() {
 				time.Sleep(time.Second * 1)
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
-					"Ugh... it's been a while. My bones are rough. My bones are weak. Load me up with 5GP and our journey together will make your week.",
+					"Ugh... it's been a while. My bones are rough. My bones are weak. Load me up with "+strconv.Itoa(CostToPlay)+"GP and our journey together will make your week.",
 					msg.ChannelID,
 					slack.RTMsgOptionTS(msg.ThreadTimestamp),
 				))
