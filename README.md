@@ -5,6 +5,8 @@ Slack bot to interface with AI Dungeon.
 Setup:
 
 - Create a new Slack user and get a legacy API token from https://api.slack.com/custom-integrations/legacy-tokens
+- Create AI Dungeon user. Set appropriate email and password environment variables.
+- Set appropriate Airtable environment variables
 
 Ideas:
 
