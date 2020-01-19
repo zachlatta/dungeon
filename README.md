@@ -33,6 +33,7 @@ To-dos:
 - [x] Working DB for multiple sessions
 - [x] Support companions
 - [x] Check to make sure correct users are messaging
+- [ ] Support @user mentions in prompts and inputs (so someone can say "Do X with @Jacob" or something like that)
 - [ ] Remove patron storage
 - [ ] Don't log.Fatal on non-essential errors
 - [ ] Goroutines for message processing
