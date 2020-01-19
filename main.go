@@ -142,9 +142,12 @@ func sessionFromAirtable(as airtableSession) (Session, error) {
 		return Session{}, err
 	}
 
-	companions, err := SlackUsersFromString(as.Fields.Companions)
-	if err != nil {
-		return Session{}, err
+	var companions []SlackUser
+	if as.Fields.Companions != "" {
+		companions, err = SlackUsersFromString(as.Fields.Companions)
+		if err != nil {
+			return Session{}, err
+		}
 	}
 
 	var patron SlackUser
@@ -219,14 +222,33 @@ func (db *DB) MarkSessionPaidAndStarted(session Session, patron SlackUser, sessi
 	return sessionFromAirtable(as)
 }
 
-type StoryItem struct {
+type airtableStoryItem struct {
 	AirtableID string `json:"id,omitempty"`
 	Fields     struct {
-		Session string
+		Session []string
 		Type    string
 		Author  string
 		Value   string
 	} `json:"fields"`
+}
+
+// author should be nil
+func (db *DB) CreateStoryItem(session Session, itemType string, author *SlackUser, value string) error {
+	si := airtableStoryItem{}
+	si.Fields.Session = []string{session.AirtableID}
+	si.Fields.Type = itemType
+
+	if author != nil {
+		si.Fields.Author = author.ToString()
+	}
+
+	si.Fields.Value = value
+
+	if err := db.client.CreateRecord("Story Items", &si); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // AI DUNGEON API CLIENT //
@@ -717,6 +739,10 @@ func main() {
 					log.Fatal("failed to update airtable record:", err)
 				}
 
+				if err := db.CreateStoryItem(session, "Output", nil, output); err != nil {
+					log.Fatal("failed to log output:", err)
+				}
+
 				rtm.SendMessage(rtm.NewOutgoingMessage(
 					output,
 					msg.ChannelID,
@@ -734,9 +760,23 @@ func main() {
 					log.Fatal("failed to get session from airtable:", err)
 				}
 
+				author, err := SlackUserFromID(api, msg.AuthorID)
+				if err != nil {
+					// TODO better errors
+					log.Fatal("failed to get slack user info:", err)
+				}
+
+				if err := db.CreateStoryItem(session, "Input", &author, msg.Input); err != nil {
+					log.Fatal("failed to log input:", err)
+				}
+
 				output, err := aidungeon.Input(session.SessionID, msg.Input)
 				if err != nil {
 					log.Fatal("ugh, failed", err)
+				}
+
+				if err := db.CreateStoryItem(session, "Output", nil, output); err != nil {
+					log.Fatal("failed to log output:", err)
 				}
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
