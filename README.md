@@ -20,10 +20,12 @@ Key flows:
 
 - User mentions @dungeon asking for help
 - User mentions @dungeon incorrectly
+- ..more
 
 Other asides:
 
 - @dungeon should invite @banker to the channel if it's not already in it
+- Goroutines to prevent blocking
 
 To-dos:
 
@@ -46,20 +48,20 @@ Response:
 
 {
   "id": 2339,
-  "accessToken":"access token goes here",
-  "facebookAccountId":null,
-  "facebookAccessToken":null,
-  "email":"foo@bar.com",
-  "username":"foo",
-  "password":"hashed password",
-  "gameSafeMode":false,
-  "gameShowTips":true,
-  "gameTextColor":null,
-  "gameTextSpeed":null,
-  "isSetup":true,
-  "createdAt":"2020-01-02T04:03:36.000Z",
-  "updatedAt":"2020-01-02T04:03:49.000Z",
-  "deletedAt":null
+  "accessToken": "access token goes here",
+  "facebookAccountId": null,
+  "facebookAccessToken": null,
+  "email": "foo@bar.com",
+  "username": "foo",
+  "password": "hashed password",
+  "gameSafeMode": false,
+  "gameShowTips": true,
+  "gameTextColor": null,
+  "gameTextSpeed": null,
+  "isSetup": true,
+  "createdAt": "2020-01-02T04:03:36.000Z",
+  "updatedAt": "2020-01-02T04:03:49.000Z",
+  "deletedAt": null
 }
 ```
 
@@ -109,16 +111,16 @@ Response:
 
 [
   {
-    "type":"output",
-    "value":"You are a lone traveler searching for a wizard in the middle of a gigantic forest. You’ve been searching for days in the forest and are lost. After a rough night’s sleep, you wake up groggy and realize that you have no idea where you are or how to get home.\n\nThe only thing that makes sense is the fact that there must be some sort of magical portal somewhere in this forest. If so, it would probably lead to an old abandoned fortress with many traps set around it."
+    "type": "output",
+    "value": "You are a lone traveler searching for a wizard in the middle of a gigantic forest. You’ve been searching for days in the forest and are lost. After a rough night’s sleep, you wake up groggy and realize that you have no idea where you are or how to get home.\n\nThe only thing that makes sense is the fact that there must be some sort of magical portal somewhere in this forest. If so, it would probably lead to an old abandoned fortress with many traps set around it."
   },
   {
-    "type":"input",
-    "value":"Jump three times."
+    "type": "input",
+    "value": "Jump three times."
   },
   {
-    "type":"output",
-    "value":"Your feet feel like they're on fire as you jump from branch to branch. The ground looks very soft under your bare feet, but then again it isn’t hard stone."
+    "type": "output",
+    "value": "Your feet feel like they're on fire as you jump from branch to branch. The ground looks very soft under your bare feet, but then again it isn’t hard stone."
   }
 ]
 ```
