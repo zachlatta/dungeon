@@ -2,6 +2,10 @@
 
 Slack bot to interface with AI Dungeon.
 
+Setup:
+
+- Create a new Slack user and get a legacy API token from https://api.slack.com/custom-integrations/legacy-tokens
+
 Ideas:
 
 - 5GP to play, modeling usage of making Slack bots to earn GP
