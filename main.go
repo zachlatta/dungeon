@@ -90,7 +90,6 @@ func (c AIDungeonClient) CreateSession(prompt string) (sessionId int, output str
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		io.Copy(os.Stdout, resp.Body)
 		return 0, "", errors.New(fmt.Sprint("http error, status code ", resp.StatusCode))
 	}
 
@@ -115,7 +114,55 @@ func (c AIDungeonClient) CreateSession(prompt string) (sessionId int, output str
 }
 
 func (c AIDungeonClient) Input(sessionId, text string) (output string, err error) {
-	return "", nil
+	body := map[string]string{
+		"text": text,
+	}
+
+	reqBody, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+
+	client := &http.Client{}
+
+	req, err := http.NewRequest("POST", "https://api.aidungeon.io/sessions/"+sessionId+"/inputs", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("x-access-token", c.AuthToken)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		io.Copy(os.Stdout, resp.Body)
+		return "", errors.New(fmt.Sprint("http error, status code ", resp.StatusCode))
+	}
+
+	type InputResp []struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+	}
+
+	var inputResp InputResp
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&inputResp); err != nil {
+		return "", err
+	}
+
+	if len(inputResp) == 0 {
+		return "", errors.New("resp length is zero for some reason...")
+	}
+
+	last := inputResp[len(inputResp)-1]
+	if last.Type == "input" {
+		return "", errors.New("last type is input instead of output...")
+	}
+
+	return last.Value, nil
 }
 
 type Msg interface {
@@ -394,7 +441,7 @@ func main() {
 					slack.RTMsgOptionTS(msg.ThreadTimestamp),
 				))
 
-				_, output, err := aidungeon.CreateSession("this is a fake session, what do you do?")
+				sessionID, output, err := aidungeon.CreateSession("this is a fake session, what do you do?")
 				if err != nil {
 					log.Fatal("ugh, failed", err)
 				}
@@ -404,8 +451,21 @@ func main() {
 					slack.RTMsgOptionTS(msg.ThreadTimestamp),
 				))
 
+				fmt.Println("SESSION ID:", sessionID)
+
 			case *InputMsg:
 				log.Println("HOO HAH I GOT THE INPUT:", msg)
+
+				output, err := aidungeon.Input("TODO", msg.Input)
+				if err != nil {
+					log.Fatal("ugh, failed", err)
+				}
+
+				rtm.SendMessage(rtm.NewOutgoingMessage(
+					output,
+					msg.ChannelID,
+					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+				))
 
 			default:
 				log.Println("unable to parse message event, unknown...")
