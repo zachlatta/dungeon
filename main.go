@@ -5,6 +5,9 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/nlopes/slack"
@@ -15,11 +18,12 @@ type Msg interface {
 }
 
 type StartJourneyMsg struct {
-	CreatorID    string
-	MsgTimestamp string
-	CompanionIDs []string
-	Prompt       string
-	raw          *slack.MessageEvent
+	CreatorID       string
+	ChannelID       string
+	ThreadTimestamp string
+	CompanionIDs    []string
+	Prompt          string
+	raw             *slack.MessageEvent
 }
 
 func (m StartJourneyMsg) Raw() *slack.MessageEvent {
@@ -44,13 +48,18 @@ func (m StartJourneyMsg) Raw() *slack.MessageEvent {
 //     end-of-the-millennium and hatch a place: you’re going to hack the moon
 //     on New Year’s Eve. You call you friend named
 //
-func ParseStartJourneyMsg(m *slack.MessageEvent) *StartJourneyMsg {
+func ParseStartJourneyMsg(m *slack.MessageEvent) (*StartJourneyMsg, bool) {
+	// cannot be in a thread
+	if m.ThreadTimestamp != "" {
+		return nil, false
+	}
+
 	// 3 parts of message: 1. our user id, 2. companions, 3. the prompt to
 	// start journey with
 	regex := regexp.MustCompile(`^<@([A-Z0-9]+)> (\(.*\) )?(.*)$`)
 	matches := regex.FindStringSubmatch(m.Text)
 	if matches == nil {
-		return nil
+		return nil, false
 	}
 
 	myUserID := matches[1]
@@ -60,7 +69,7 @@ func ParseStartJourneyMsg(m *slack.MessageEvent) *StartJourneyMsg {
 	// if this doesn't look like a start journey msg, skip
 	// TODO: dynamically get our user ID
 	if myUserID != "USH186XSP" || promptText == "" {
-		return nil
+		return nil, false
 	}
 
 	// extract companion IDs if present
@@ -74,20 +83,90 @@ func ParseStartJourneyMsg(m *slack.MessageEvent) *StartJourneyMsg {
 	}
 
 	return &StartJourneyMsg{
-		CreatorID:    m.User,
-		MsgTimestamp: m.Timestamp,
-		CompanionIDs: companionIDs,
-		Prompt:       promptText,
-		raw:          m,
+		CreatorID:       m.User,
+		ChannelID:       m.Channel,
+		ThreadTimestamp: m.Timestamp,
+		CompanionIDs:    companionIDs,
+		Prompt:          promptText,
+		raw:             m,
+	}, true
+}
+
+type ReceiveMoneyMsg struct {
+	CreatorID       string
+	RecipientID     string
+	ChannelID       string
+	ThreadTimestamp string
+	GP              int
+	Reason          string
+	raw             *slack.MessageEvent
+}
+
+func (m ReceiveMoneyMsg) Raw() *slack.MessageEvent {
+	return m.raw
+}
+
+func ParseReceiveMoneyMsg(m *slack.MessageEvent) (*ReceiveMoneyMsg, bool) {
+	// must be in a thread
+	if m.ThreadTimestamp == "" {
+		return nil, false
 	}
+
+	// 3 parts of message: 1. GP amount, 2. GP receipient ID, 3. (optional)
+	// the reason the user gave to banker for the transfer
+	regex := regexp.MustCompile(`^I shall transfer ([0-9,]+)gp to <@([A-Z0-9]+)> immediately( for "(.*)")?.*$`)
+	matches := regex.FindStringSubmatch(m.Text)
+	if matches == nil {
+		return nil, false
+	}
+
+	rawGPAmount := matches[1]
+	recipientUserID := matches[2]
+	reasonGiven := matches[4]
+
+	fmt.Println("GP Amount:", rawGPAmount)
+	fmt.Println("Recipient user ID:", recipientUserID)
+	fmt.Println("Reason given:", reasonGiven)
+
+	gpAmount, err := strconv.Atoi(rawGPAmount)
+	if err != nil {
+		return nil, false
+	}
+
+	// check the details, make sure this transfer actually happened for the right amount
+	// TODO: figure out better way to work with banker user ID TODO: dynamically get our user ID
+	if m.User != "UH50T81A6" || recipientUserID != "USH186XSP" || gpAmount != 5 {
+		return nil, false
+	}
+
+	return &ReceiveMoneyMsg{
+		CreatorID:       m.User,
+		RecipientID:     recipientUserID,
+		ChannelID:       m.Channel,
+		ThreadTimestamp: m.ThreadTimestamp,
+		GP:              gpAmount,
+		Reason:          reasonGiven,
+		raw:             m,
+	}, true
 }
 
 func parseMessage(msg *slack.MessageEvent) Msg {
-	return ParseStartJourneyMsg(msg)
+	parsed, ok := ParseStartJourneyMsg(msg)
+	if !ok {
+		parsed, ok := ParseReceiveMoneyMsg(msg)
+		if !ok {
+			return nil
+		}
+
+		return parsed
+	}
+
+	return parsed
 }
 
 func main() {
 	err := godotenv.Load()
+
 	if err != nil {
 		log.Fatal("error loading .env file")
 	}
@@ -108,11 +187,53 @@ func main() {
 				continue
 			}
 
+			log.Println("raw event", ev)
+
 			parsed := parseMessage(ev)
 
 			switch msg := parsed.(type) {
 			case *StartJourneyMsg:
-				fmt.Println("Let's start the journey!", msg)
+				log.Println("Let's start the journey!", msg)
+
+				rtm.SendMessage(rtm.NewOutgoingMessage(
+					"_groggily wakes up..._",
+					msg.ChannelID,
+					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+				))
+
+				time.Sleep(time.Second * 1)
+
+				rtm.SendMessage(rtm.NewOutgoingMessage(
+					"Ugh... it's been a while. My bones are rough. My bones are weak. Load me up with 5GP and our journey together will make your week.",
+					msg.ChannelID,
+					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+				))
+			case *ReceiveMoneyMsg:
+				log.Println("Hoo hah, I got the money:", msg)
+
+				if msg.Reason != "" {
+					rtm.SendMessage(rtm.NewOutgoingMessage(
+						`"`+strings.TrimSpace(msg.Reason)+`", huh? Hope I can live up to that. Let me think on this one...`,
+						msg.ChannelID,
+						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					))
+				} else {
+					rtm.SendMessage(rtm.NewOutgoingMessage(
+						"Ah, now that's a bit better. Let me think on this one...",
+						msg.ChannelID,
+						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					))
+				}
+
+				time.Sleep(time.Second * 1)
+
+				rtm.SendMessage(rtm.NewOutgoingMessage(
+					"_:musical_note: elevator music :musical_note:_",
+					msg.ChannelID,
+					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+				))
+			default:
+				log.Println("unable to parse message event, unknown...")
 			}
 		}
 	}
