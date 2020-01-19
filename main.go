@@ -45,7 +45,7 @@ func (u SlackUser) ToString() string {
 	return u.Name + " <@" + u.ID + ">"
 }
 
-var slackUserRegex = regexp.MustCompile("(.+) <@([A-Z0-9]+)>")
+var slackUserRegex = regexp.MustCompile("((.+) )?<@([A-Z0-9]+)>")
 
 func SlackUserFromID(client *slack.Client, slackID string) (SlackUser, error) {
 	userProfile, err := client.GetUserProfile(slackID, false)
@@ -66,8 +66,8 @@ func SlackUserFromString(str string) (SlackUser, error) {
 	}
 
 	return SlackUser{
-		Name: matches[1],
-		ID:   matches[2],
+		Name: matches[2],
+		ID:   matches[3],
 	}, nil
 }
 
@@ -111,6 +111,7 @@ func SlackUsersFromString(str string) ([]SlackUser, error) {
 }
 
 type Session struct {
+	AirtableID      string
 	ThreadTimestamp string
 	Creator         SlackUser
 	Companions      []SlackUser
@@ -155,6 +156,7 @@ func sessionFromAirtable(as airtableSession) (Session, error) {
 	}
 
 	return Session{
+		AirtableID:      as.AirtableID,
 		ThreadTimestamp: as.Fields.ThreadTimestamp,
 		Creator:         creator,
 		Companions:      companions,
@@ -175,6 +177,42 @@ func (db *DB) CreateSession(threadTs string, creator SlackUser, companions []Sla
 	as.Fields.Prompt = prompt
 
 	if err := db.client.CreateRecord("Sessions", &as); err != nil {
+		return Session{}, err
+	}
+
+	return sessionFromAirtable(as)
+}
+
+func (db *DB) GetSession(threadTs string) (Session, error) {
+	listParams := airtable.ListParameters{
+		// TODO Prevent string escaping problems
+		FilterByFormula: `{Thread Timestamp} = "` + threadTs + `"`,
+	}
+
+	airtableSessions := []airtableSession{}
+	if err := db.client.ListRecords("Sessions", &airtableSessions, listParams); err != nil {
+		return Session{}, err
+	}
+
+	if len(airtableSessions) > 1 {
+		return Session{}, errors.New("too many sessions, non-unique timestamps")
+	} else if len(airtableSessions) == 0 {
+		return Session{}, errors.New("no session found")
+	}
+
+	return sessionFromAirtable(airtableSessions[0])
+}
+
+func (db *DB) MarkSessionPaidAndStarted(session Session, patron SlackUser, sessionID int) (Session, error) {
+	as := airtableSession{}
+
+	updatedFields := map[string]interface{}{
+		"Paid?":      true,
+		"Patron":     patron.ToString(),
+		"Session ID": sessionID,
+	}
+
+	if err := db.client.UpdateRecord("Sessions", session.AirtableID, updatedFields, &as); err != nil {
 		return Session{}, err
 	}
 
@@ -288,7 +326,7 @@ func (c AIDungeonClient) CreateSession(prompt string) (sessionId int, output str
 	return newSessionResp.ID, newSessionResp.Story[0].Value, nil
 }
 
-func (c AIDungeonClient) Input(sessionId, text string) (output string, err error) {
+func (c AIDungeonClient) Input(sessionId int, text string) (output string, err error) {
 	body := map[string]string{
 		"text": text,
 	}
@@ -300,7 +338,7 @@ func (c AIDungeonClient) Input(sessionId, text string) (output string, err error
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest("POST", "https://api.aidungeon.io/sessions/"+sessionId+"/inputs", bytes.NewBuffer(reqBody))
+	req, err := http.NewRequest("POST", "https://api.aidungeon.io/sessions/"+strconv.Itoa(sessionId)+"/inputs", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return "", err
 	}
@@ -635,6 +673,12 @@ func main() {
 			case *ReceiveMoneyMsg:
 				log.Println("Hoo hah, I got the money:", msg)
 
+				session, err := db.GetSession(msg.ThreadTimestamp)
+				if err != nil {
+					// TODO better error handling
+					log.Fatal("error getting session:", err)
+				}
+
 				if msg.Reason != "" {
 					rtm.SendMessage(rtm.NewOutgoingMessage(
 						`"`+strings.TrimSpace(msg.Reason)+`", huh? Hope I can live up to that. Let me think on this one...`,
@@ -657,10 +701,22 @@ func main() {
 					slack.RTMsgOptionTS(msg.ThreadTimestamp),
 				))
 
-				sessionID, output, err := aidungeon.CreateSession("this is a fake session, what do you do?")
+				sessionID, output, err := aidungeon.CreateSession(session.Prompt)
 				if err != nil {
 					log.Fatal("ugh, failed", err)
 				}
+
+				// TODO make this actually work
+				patron, err := SlackUserFromID(api, msg.AuthorID)
+				if err != nil {
+					log.Fatal("failed to get deets:", err)
+				}
+
+				session, err = db.MarkSessionPaidAndStarted(session, patron, sessionID)
+				if err != nil {
+					log.Fatal("failed to update airtable record:", err)
+				}
+
 				rtm.SendMessage(rtm.NewOutgoingMessage(
 					output,
 					msg.ChannelID,
@@ -672,7 +728,13 @@ func main() {
 			case *InputMsg:
 				log.Println("HOO HAH I GOT THE INPUT:", msg)
 
-				output, err := aidungeon.Input("TODO", msg.Input)
+				session, err := db.GetSession(msg.ThreadTimestamp)
+				if err != nil {
+					// TODO real error handling
+					log.Fatal("failed to get session from airtable:", err)
+				}
+
+				output, err := aidungeon.Input(session.SessionID, msg.Input)
 				if err != nil {
 					log.Fatal("ugh, failed", err)
 				}
