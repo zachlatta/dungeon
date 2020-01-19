@@ -36,7 +36,7 @@ POST https://api.aidungeon.io/users
 
 {
   "email": "foo@bar.com",
-  "passwird": "password goes here"
+  "password": "password goes here"
 }
 
 Response:

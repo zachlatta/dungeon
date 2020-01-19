@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -12,6 +16,56 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nlopes/slack"
 )
+
+type AIDungeonClient struct {
+	Email     string
+	Password  string
+	AuthToken string
+}
+
+func NewAIDungeonClient(email, password string) (AIDungeonClient, error) {
+	body := map[string]string{
+		"email":    email,
+		"password": password,
+	}
+
+	reqBody, err := json.Marshal(body)
+	if err != nil {
+		return AIDungeonClient{}, nil
+	}
+
+	resp, err := http.Post("https://api.aidungeon.io/users", "application/json", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return AIDungeonClient{}, nil
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return AIDungeonClient{}, errors.New(fmt.Sprint("http error, status code ", resp.StatusCode))
+	}
+
+	type LoginResp struct {
+		AccessToken string `json:"accessToken"`
+	}
+
+	var loginResp LoginResp
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&loginResp); err != nil {
+		return AIDungeonClient{}, nil
+	}
+
+	return AIDungeonClient{
+		Email:    email,
+		Password: password,
+	}, nil
+}
+
+func (c AIDungeonClient) CreateSession(prompt string) (sessionId, output string, err error) {
+	return "", "", nil
+}
+
+func (c AIDungeonClient) Input(sessionId, text string) (output string, err error) {
+	return "", nil
+}
 
 type Msg interface {
 	Raw() *slack.MessageEvent
@@ -31,7 +85,6 @@ func (m StartJourneyMsg) Raw() *slack.MessageEvent {
 }
 
 // nil if don't process, value if proceed
-//
 // Example of messages this funciton will process:
 //
 //   Without companions:
@@ -166,12 +219,20 @@ func parseMessage(msg *slack.MessageEvent) Msg {
 
 func main() {
 	err := godotenv.Load()
-
 	if err != nil {
 		log.Fatal("error loading .env file")
 	}
 
 	slackAuthToken := os.Getenv("SLACK_LEGACY_TOKEN")
+	aidungeonEmail := os.Getenv("AIDUNGEON_EMAIL")
+	aidungeonPassword := os.Getenv("AIDUNGEON_PASSWORD")
+
+	_, err = NewAIDungeonClient(aidungeonEmail, aidungeonPassword)
+	if err != nil {
+		log.Fatal("error creating aidungeon client:", err)
+	}
+
+	log.Println("logged into ai dungeon with email", aidungeonEmail)
 
 	api := slack.New(slackAuthToken)
 
@@ -179,7 +240,7 @@ func main() {
 	go rtm.ManageConnection()
 
 	for rawMsg := range rtm.IncomingEvents {
-		log.Println("Event received:", rawMsg)
+		log.Println("event received:", rawMsg)
 
 		switch ev := rawMsg.Data.(type) {
 		case *slack.MessageEvent:
