@@ -51,7 +51,8 @@ func (u SlackUser) ToString() string {
 	return u.Name + " <@" + u.ID + ">"
 }
 
-var slackUserRegex = regexp.MustCompile("((.+) )?<@([A-Z0-9]+)>")
+// (?U) makes it non-greedy
+var slackUserRegex = regexp.MustCompile("(?U)((.+) )?<@([A-Z0-9]+)>")
 
 func SlackUserFromID(client *slack.Client, slackID string) (SlackUser, error) {
 	userProfile, err := client.GetUserProfile(slackID, false)
