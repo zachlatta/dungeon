@@ -32,7 +32,10 @@ To-dos:
 - [x] Most basic flow working
 - [x] Working DB for multiple sessions
 - [x] Support companions
-- [ ] Check to make sure correct users are messaging
+- [x] Check to make sure correct users are messaging
+- [ ] Remove patron storage
+- [ ] Don't log.Fatal on non-essential errors
+- [ ] Goroutines for message processing
 - [ ] Massive refactor (clearing out TODOs)
 
 ---
