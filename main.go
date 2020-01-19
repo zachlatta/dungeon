@@ -14,9 +14,182 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fabioberger/airtable-go"
 	"github.com/joho/godotenv"
 	"github.com/nlopes/slack"
 )
+
+// AIRTABLE DB //
+
+type DB struct {
+	client *airtable.Client
+}
+
+func NewDB(airtableAPIKey, airtableBaseID string) (*DB, error) {
+	client, err := airtable.New(airtableAPIKey, airtableBaseID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DB{
+		client: client,
+	}, nil
+}
+
+type SlackUser struct {
+	ID   string
+	Name string
+}
+
+func (u SlackUser) ToString() string {
+	return u.Name + " <@" + u.ID + ">"
+}
+
+var slackUserRegex = regexp.MustCompile("(.+) <@([A-Z0-9]+)>")
+
+func SlackUserFromID(client *slack.Client, slackID string) (SlackUser, error) {
+	userProfile, err := client.GetUserProfile(slackID, false)
+	if err != nil {
+		return SlackUser{}, err
+	}
+
+	return SlackUser{
+		ID:   slackID,
+		Name: userProfile.DisplayName,
+	}, nil
+}
+
+func SlackUserFromString(str string) (SlackUser, error) {
+	matches := slackUserRegex.FindStringSubmatch(str)
+	if matches == nil {
+		return SlackUser{}, errors.New("no slack user matches found")
+	}
+
+	return SlackUser{
+		Name: matches[1],
+		ID:   matches[2],
+	}, nil
+}
+
+func SlackUsersToString(users []SlackUser) string {
+	strs := make([]string, len(users))
+	for i, u := range users {
+		strs[i] = u.ToString()
+	}
+
+	return strings.Join(strs, ", ")
+}
+
+func SlackUsersFromIDs(client *slack.Client, ids []string) ([]SlackUser, error) {
+	users := make([]SlackUser, len(ids))
+	for i, id := range ids {
+		var err error
+		users[i], err = SlackUserFromID(client, id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return users, nil
+}
+
+func SlackUsersFromString(str string) ([]SlackUser, error) {
+	matches := slackUserRegex.FindAllStringSubmatch(str, -1)
+	if matches == nil {
+		return nil, errors.New("no slack user matches found")
+	}
+
+	slackUsers := make([]SlackUser, len(matches))
+	for i, match := range matches {
+		slackUsers[i] = SlackUser{
+			Name: match[1],
+			ID:   match[2],
+		}
+	}
+
+	return slackUsers, nil
+}
+
+type Session struct {
+	ThreadTimestamp string
+	Creator         SlackUser
+	Companions      []SlackUser
+	CostGP          int
+	Paid            bool
+	Patron          SlackUser
+	Prompt          string
+	SessionID       int
+}
+
+type airtableSession struct {
+	AirtableID string `json:"id,omitempty"`
+	Fields     struct {
+		ThreadTimestamp string `json:"Thread Timestamp"`
+		Creator         string
+		Companions      string
+		Cost            int  `json:"Cost (GP)"`
+		Paid            bool `json:"Paid?"`
+		Patron          string
+		Prompt          string
+		SessionID       int `json:"Session ID,omitempty"`
+	} `json:"fields"`
+}
+
+func sessionFromAirtable(as airtableSession) (Session, error) {
+	creator, err := SlackUserFromString(as.Fields.Creator)
+	if err != nil {
+		return Session{}, err
+	}
+
+	companions, err := SlackUsersFromString(as.Fields.Companions)
+	if err != nil {
+		return Session{}, err
+	}
+
+	var patron SlackUser
+	if as.Fields.Patron != "" {
+		patron, err = SlackUserFromString(as.Fields.Patron)
+		if err != nil {
+			return Session{}, err
+		}
+	}
+
+	return Session{
+		ThreadTimestamp: as.Fields.ThreadTimestamp,
+		Creator:         creator,
+		Companions:      companions,
+		CostGP:          as.Fields.Cost,
+		Paid:            as.Fields.Paid,
+		Patron:          patron,
+		Prompt:          as.Fields.Prompt,
+		SessionID:       as.Fields.SessionID,
+	}, nil
+}
+
+func (db *DB) CreateSession(threadTs string, creator SlackUser, companions []SlackUser, costGP int, prompt string) (Session, error) {
+	as := airtableSession{}
+	as.Fields.ThreadTimestamp = threadTs
+	as.Fields.Creator = creator.ToString()
+	as.Fields.Companions = SlackUsersToString(companions)
+	as.Fields.Cost = costGP
+	as.Fields.Prompt = prompt
+
+	if err := db.client.CreateRecord("Sessions", &as); err != nil {
+		return Session{}, err
+	}
+
+	return sessionFromAirtable(as)
+}
+
+type StoryItem struct {
+	AirtableID string `json:"id,omitempty"`
+	Fields     struct {
+		Session string
+		Type    string
+		Author  string
+		Value   string
+	} `json:"fields"`
+}
 
 // AI DUNGEON API CLIENT //
 
@@ -175,6 +348,7 @@ type Msg interface {
 
 type StartJourneyMsg struct {
 	AuthorID        string
+	AuthorName      string
 	ChannelID       string
 	ThreadTimestamp string
 	CompanionIDs    []string
@@ -379,13 +553,26 @@ func main() {
 	slackAuthToken := os.Getenv("SLACK_LEGACY_TOKEN")
 	aidungeonEmail := os.Getenv("AIDUNGEON_EMAIL")
 	aidungeonPassword := os.Getenv("AIDUNGEON_PASSWORD")
+	airtableAPIKey := os.Getenv("AIRTABLE_API_KEY")
+	airtableBaseID := os.Getenv("AIRTABLE_BASE")
+
+	log.Println("logging into ai dungeon with email", aidungeonEmail)
 
 	aidungeon, err := NewAIDungeonClient(aidungeonEmail, aidungeonPassword)
 	if err != nil {
 		log.Fatal("error creating aidungeon client:", err)
 	}
 
-	log.Println("logged into ai dungeon with email", aidungeonEmail)
+	log.Println("logged into ai dungeon")
+
+	log.Println("authenticating with airtable")
+
+	db, err := NewDB(airtableAPIKey, airtableBaseID)
+	if err != nil {
+		log.Fatal("error creating airtable client:", err)
+	}
+
+	log.Println("authenticated with airtable")
 
 	api := slack.New(slackAuthToken)
 
@@ -408,6 +595,29 @@ func main() {
 			switch msg := parsed.(type) {
 			case *StartJourneyMsg:
 				log.Println("Let's start the journey!", msg)
+
+				log.Println("Creating session in Airtable")
+
+				creator, err := SlackUserFromID(api, msg.AuthorID)
+				if err != nil {
+					// TODO better error handling
+					log.Fatal("error creating creator:", err)
+				}
+
+				companions, err := SlackUsersFromIDs(api, msg.CompanionIDs)
+				if err != nil {
+					log.Fatal("error creating companions:", err)
+				}
+
+				session, err := db.CreateSession(
+					msg.ThreadTimestamp,
+					creator,
+					companions,
+					5, // TODO gp amount, make a constant or something
+					msg.Prompt,
+				)
+
+				log.Println("SESSION CREATED", session)
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
 					"_groggily wakes up..._",
