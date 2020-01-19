@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -54,13 +55,63 @@ func NewAIDungeonClient(email, password string) (AIDungeonClient, error) {
 	}
 
 	return AIDungeonClient{
-		Email:    email,
-		Password: password,
+		Email:     email,
+		Password:  password,
+		AuthToken: loginResp.AccessToken,
 	}, nil
 }
 
-func (c AIDungeonClient) CreateSession(prompt string) (sessionId, output string, err error) {
-	return "", "", nil
+func (c AIDungeonClient) CreateSession(prompt string) (sessionId int, output string, err error) {
+	body := map[string]interface{}{
+		"storyMode":     "custom",
+		"characterType": nil,
+		"name":          nil,
+		"customPrompt":  &prompt,
+		"promptId":      nil,
+	}
+
+	reqBody, err := json.Marshal(body)
+	if err != nil {
+		return 0, "", err
+	}
+
+	client := &http.Client{}
+
+	req, err := http.NewRequest("POST", "https://api.aidungeon.io/sessions", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return 0, "", err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("x-access-token", c.AuthToken)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, "", err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		io.Copy(os.Stdout, resp.Body)
+		return 0, "", errors.New(fmt.Sprint("http error, status code ", resp.StatusCode))
+	}
+
+	type NewSessionResp struct {
+		ID    int `json:"id"`
+		Story []struct {
+			Value string `json:"value"`
+		} `json:"story"`
+	}
+
+	var newSessionResp NewSessionResp
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&newSessionResp); err != nil {
+		return 0, "", err
+	}
+
+	if len(newSessionResp.Story) == 0 {
+		return 0, "", errors.New("story is empty for some reason")
+	}
+
+	return newSessionResp.ID, newSessionResp.Story[0].Value, nil
 }
 
 func (c AIDungeonClient) Input(sessionId, text string) (output string, err error) {
@@ -227,7 +278,7 @@ func main() {
 	aidungeonEmail := os.Getenv("AIDUNGEON_EMAIL")
 	aidungeonPassword := os.Getenv("AIDUNGEON_PASSWORD")
 
-	_, err = NewAIDungeonClient(aidungeonEmail, aidungeonPassword)
+	aidungeon, err := NewAIDungeonClient(aidungeonEmail, aidungeonPassword)
 	if err != nil {
 		log.Fatal("error creating aidungeon client:", err)
 	}
@@ -293,6 +344,17 @@ func main() {
 					msg.ChannelID,
 					slack.RTMsgOptionTS(msg.ThreadTimestamp),
 				))
+
+				_, output, err := aidungeon.CreateSession("this is a fake session, what do you do?")
+				if err != nil {
+					log.Fatal("ugh, failed", err)
+				}
+				rtm.SendMessage(rtm.NewOutgoingMessage(
+					output,
+					msg.ChannelID,
+					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+				))
+
 			default:
 				log.Println("unable to parse message event, unknown...")
 			}
