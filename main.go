@@ -123,7 +123,7 @@ type Msg interface {
 }
 
 type StartJourneyMsg struct {
-	CreatorID       string
+	AuthorID        string
 	ChannelID       string
 	ThreadTimestamp string
 	CompanionIDs    []string
@@ -187,7 +187,7 @@ func ParseStartJourneyMsg(m *slack.MessageEvent) (*StartJourneyMsg, bool) {
 	}
 
 	return &StartJourneyMsg{
-		CreatorID:       m.User,
+		AuthorID:        m.User,
 		ChannelID:       m.Channel,
 		ThreadTimestamp: m.Timestamp,
 		CompanionIDs:    companionIDs,
@@ -197,7 +197,7 @@ func ParseStartJourneyMsg(m *slack.MessageEvent) (*StartJourneyMsg, bool) {
 }
 
 type ReceiveMoneyMsg struct {
-	CreatorID       string
+	AuthorID        string
 	RecipientID     string
 	ChannelID       string
 	ThreadTimestamp string
@@ -244,7 +244,7 @@ func ParseReceiveMoneyMsg(m *slack.MessageEvent) (*ReceiveMoneyMsg, bool) {
 	}
 
 	return &ReceiveMoneyMsg{
-		CreatorID:       m.User,
+		AuthorID:        m.User,
 		RecipientID:     recipientUserID,
 		ChannelID:       m.Channel,
 		ThreadTimestamp: m.ThreadTimestamp,
@@ -254,12 +254,61 @@ func ParseReceiveMoneyMsg(m *slack.MessageEvent) (*ReceiveMoneyMsg, bool) {
 	}, true
 }
 
+type InputMsg struct {
+	AuthorID        string
+	ChannelID       string
+	ThreadTimestamp string
+	Input           string
+	raw             *slack.MessageEvent
+}
+
+func (m InputMsg) Raw() *slack.MessageEvent {
+	return m.raw
+}
+
+func ParseInputMsg(m *slack.MessageEvent) (*InputMsg, bool) {
+	// must be in a thread
+	if m.ThreadTimestamp == "" {
+		return nil, false
+	}
+
+	// 2 parts of message: 1. @dungeon and 2. their input for the next step
+	// of the session
+	regex := regexp.MustCompile(`^<@([A-Z0-9]+)> (.+)$`)
+	matches := regex.FindStringSubmatch(m.Text)
+	if matches == nil {
+		return nil, false
+	}
+
+	toUser := matches[1]
+	input := matches[2]
+
+	// TODO if m.User != creator of thread (or their buddies, if companions enabled)
+	// TODO: dynamically get @dungeon id
+	if toUser != "USH186XSP" {
+		return nil, false
+	}
+
+	return &InputMsg{
+		AuthorID:        m.User,
+		ChannelID:       m.Channel,
+		ThreadTimestamp: m.ThreadTimestamp,
+		Input:           input,
+		raw:             m,
+	}, true
+}
+
 func parseMessage(msg *slack.MessageEvent) Msg {
 	parsed, ok := ParseStartJourneyMsg(msg)
 	if !ok {
 		parsed, ok := ParseReceiveMoneyMsg(msg)
 		if !ok {
-			return nil
+			parsed, ok := ParseInputMsg(msg)
+			if !ok {
+				return nil
+			}
+
+			return parsed
 		}
 
 		return parsed
@@ -354,6 +403,9 @@ func main() {
 					msg.ChannelID,
 					slack.RTMsgOptionTS(msg.ThreadTimestamp),
 				))
+
+			case *InputMsg:
+				log.Println("HOO HAH I GOT THE INPUT:", msg)
 
 			default:
 				log.Println("unable to parse message event, unknown...")
