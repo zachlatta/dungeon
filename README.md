@@ -119,3 +119,11 @@ Response:
   }
 ]
 ```
+
+```
+POST https://api.aidungeon.io/sessions (with invalid x-access-token)
+
+HTTP 401 Unauthorized
+
+"Invalid credentials."
+```
