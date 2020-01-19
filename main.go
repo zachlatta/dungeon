@@ -18,6 +18,8 @@ import (
 	"github.com/nlopes/slack"
 )
 
+// AI DUNGEON API CLIENT //
+
 type AIDungeonClient struct {
 	Email     string
 	Password  string
@@ -164,6 +166,8 @@ func (c AIDungeonClient) Input(sessionId, text string) (output string, err error
 
 	return last.Value, nil
 }
+
+// SLACK MESSAGE PARSING //
 
 type Msg interface {
 	Raw() *slack.MessageEvent
@@ -363,6 +367,8 @@ func parseMessage(msg *slack.MessageEvent) Msg {
 
 	return parsed
 }
+
+// MAIN LOGIC //
 
 func main() {
 	err := godotenv.Load()
