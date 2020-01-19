@@ -30,7 +30,10 @@ Other asides:
 To-dos:
 
 - [x] Most basic flow working
-- [ ] Working DB for multiple sessions
+- [x] Working DB for multiple sessions
+- [x] Support companions
+- [ ] Check to make sure correct users are messaging
+- [ ] Massive refactor (clearing out TODOs)
 
 ---
 
@@ -38,6 +41,7 @@ AI Dungeon API:
 
 ```
 POST https://api.aidungeon.io/users
+
 
 {
   "email": "foo@bar.com",

@@ -43,6 +43,10 @@ type SlackUser struct {
 	Name string
 }
 
+func (u SlackUser) Eq(ou SlackUser) bool {
+	return u.ID == ou.ID
+}
+
 func (u SlackUser) ToString() string {
 	return u.Name + " <@" + u.ID + ">"
 }
@@ -101,11 +105,14 @@ func SlackUsersFromString(str string) ([]SlackUser, error) {
 		return nil, errors.New("no slack user matches found")
 	}
 
+	fmt.Println(str)
+	fmt.Println(matches)
+
 	slackUsers := make([]SlackUser, len(matches))
 	for i, match := range matches {
 		slackUsers[i] = SlackUser{
-			Name: match[1],
-			ID:   match[2],
+			Name: match[2],
+			ID:   match[3],
 		}
 	}
 
@@ -436,7 +443,7 @@ func (m StartJourneyMsg) Raw() *slack.MessageEvent {
 //     <@USH186XSP> (with <@U0C7B14Q3> and <@UDYDSUDHV>) You are a hacker in
 //     the year 2999 in the future-city of Neosporia. While sitting in your
 //     high-rise apartment on floor 401, you reflect on the coming
-//     end-of-the-millennium and hatch a place: you’re going to hack the moon
+//     end-of-the-millennium and hatch a plan: you’re going to hack the moon
 //     on New Year’s Eve. You call you friend named
 //
 func ParseStartJourneyMsg(m *slack.MessageEvent) (*StartJourneyMsg, bool) {
@@ -514,10 +521,6 @@ func ParseReceiveMoneyMsg(m *slack.MessageEvent) (*ReceiveMoneyMsg, bool) {
 	rawGPAmount := matches[1]
 	recipientUserID := matches[2]
 	reasonGiven := matches[4]
-
-	fmt.Println("GP Amount:", rawGPAmount)
-	fmt.Println("Recipient user ID:", recipientUserID)
-	fmt.Println("Reason given:", reasonGiven)
 
 	gpAmount, err := strconv.Atoi(rawGPAmount)
 	if err != nil {
@@ -699,8 +702,30 @@ func main() {
 
 				session, err := db.GetSession(msg.ThreadTimestamp)
 				if err != nil {
-					// TODO better error handling
-					log.Fatal("error getting session:", err)
+					rtm.SendMessage(rtm.NewOutgoingMessage(
+						"Wow, I am truly flattered. Thank you!",
+						msg.ChannelID,
+						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					))
+					log.Println("received money, but unable to find session:", err, "-", msg)
+
+					continue
+				}
+
+				if session.Paid {
+					rtm.SendMessage(rtm.NewOutgoingMessage(
+						"This journey is already paid for, but I'll still happily take your money!",
+						msg.ChannelID,
+						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					))
+					log.Println(
+						"received money for already paid session:",
+						session.ThreadTimestamp,
+						"-",
+						msg,
+					)
+
+					continue
 				}
 
 				if msg.Reason != "" {
@@ -725,6 +750,9 @@ func main() {
 					slack.RTMsgOptionTS(msg.ThreadTimestamp),
 				))
 
+				// indicate we're typing
+				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID))
+
 				sessionID, output, err := aidungeon.CreateSession(session.Prompt)
 				if err != nil {
 					log.Fatal("ugh, failed", err)
@@ -746,6 +774,17 @@ func main() {
 				}
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
+					"_(remember to @mention me in your replies!)_",
+					msg.ChannelID,
+					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+				))
+
+				// indicate we're typing
+				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID))
+
+				time.Sleep(time.Second * 1)
+
+				rtm.SendMessage(rtm.NewOutgoingMessage(
 					output,
 					msg.ChannelID,
 					slack.RTMsgOptionTS(msg.ThreadTimestamp),
@@ -758,8 +797,14 @@ func main() {
 
 				session, err := db.GetSession(msg.ThreadTimestamp)
 				if err != nil {
-					// TODO real error handling
-					log.Fatal("failed to get session from airtable:", err)
+					log.Println("input attemped, unable to find session:", err, "-", msg)
+					rtm.SendMessage(rtm.NewOutgoingMessage(
+						"...I'm sorry. What are you talking about? We're not on a journey together right now.",
+						msg.ChannelID,
+						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					))
+
+					continue
 				}
 
 				author, err := SlackUserFromID(api, msg.AuthorID)
@@ -768,9 +813,35 @@ func main() {
 					log.Fatal("failed to get slack user info:", err)
 				}
 
+				authedInput := false
+				if session.Creator.Eq(author) {
+					authedInput = true
+				} else {
+					for _, companion := range session.Companions {
+						fmt.Println(author, companion, "-", companion.Eq(author))
+						if companion.Eq(author) {
+							authedInput = true
+						}
+					}
+				}
+
+				if !authedInput {
+					log.Println("input attempted from non-creator or contributor:", author.ToString(), "-", msg.Raw())
+					rtm.SendMessage(rtm.NewOutgoingMessage(
+						"...sorry my friend, but this isn't your journey to embark on.",
+						msg.ChannelID,
+						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					))
+
+					continue
+				}
+
 				if err := db.CreateStoryItem(session, "Input", &author, msg.Input); err != nil {
 					log.Fatal("failed to log input:", err)
 				}
+
+				// indicate we're typing
+				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID))
 
 				output, err := aidungeon.Input(session.SessionID, msg.Input)
 				if err != nil {
