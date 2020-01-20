@@ -30,6 +30,9 @@ To-dos:
 - [x] Working DB for multiple sessions
 - [x] Support companions
 - [x] Check to make sure correct users are messaging
+- [ ] Handle DM flow
+- [ ] Handle flow where people only mention `@dungeon` by emoting
+- [ ] Handle `@dungeon help`
 - [ ] Remove patron storage
 - [ ] Better error handling: don't log.Fatal on non-essential errors
 - [ ] Goroutines for message processing
