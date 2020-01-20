@@ -32,7 +32,7 @@ To-dos:
 - [x] Check to make sure correct users are messaging
 - [x] Handle DM flow
 - [x] Handle flow where people only mention `@dungeon` by emoting
-- [ ] Handle `@dungeon help`
+- [x] Handle `@dungeon help`
 - [x] Remove patron storage
 - [ ] Better error handling: don't log.Fatal on non-essential errors
 - [ ] Goroutines for message processing

@@ -632,33 +632,69 @@ func ParseMentionMsg(m *slack.MessageEvent) (*MentionMsg, bool) {
 	return nil, false
 }
 
+type HelpMsg struct {
+	ChannelID string
+	Timestamp string
+	Text      string
+	raw       *slack.MessageEvent
+}
+
+func (m HelpMsg) Raw() *slack.MessageEvent {
+	return m.raw
+}
+
+func ParseHelpMsg(m *slack.MessageEvent) (*HelpMsg, bool) {
+	if strings.TrimSpace(m.Text) == "<@"+"USH186XSP"+">"+" help" {
+		return &HelpMsg{
+			ChannelID: m.Channel,
+			Timestamp: m.Timestamp,
+			Text:      m.Text,
+			raw:       m,
+		}, true
+	}
+
+	return nil, false
+}
+
 func parseMessage(msg *slack.MessageEvent) Msg {
-	parsed, ok := ParseStartJourneyMsg(msg)
-	if !ok {
-		parsed, ok := ParseReceiveMoneyMsg(msg)
-		if !ok {
-			parsed, ok := ParseInputMsg(msg)
-			if !ok {
-				parsed, ok := ParseDMMsg(msg)
-				if !ok {
-					parsed, ok := ParseMentionMsg(msg)
-					if !ok {
-						return nil
-					}
+	var parsed Msg
+	var ok bool
 
-					return parsed
-				}
+	// alt flows, help / mentions / dms
 
-				return parsed
-			}
-
-			return parsed
-		}
-
+	parsed, ok = ParseHelpMsg(msg)
+	if ok {
 		return parsed
 	}
 
-	return parsed
+	parsed, ok = ParseMentionMsg(msg)
+	if ok {
+		return parsed
+	}
+
+	parsed, ok = ParseDMMsg(msg)
+	if ok {
+		return parsed
+	}
+
+	// main flows, in order flow will happen
+
+	parsed, ok = ParseStartJourneyMsg(msg)
+	if ok {
+		return parsed
+	}
+
+	parsed, ok = ParseReceiveMoneyMsg(msg)
+	if ok {
+		return parsed
+	}
+
+	parsed, ok = ParseInputMsg(msg)
+	if ok {
+		return parsed
+	}
+
+	return nil
 }
 
 // MAIN LOGIC //
@@ -932,6 +968,24 @@ here are a few scenario ideas:
 				if err != nil {
 					log.Fatal("failed to add reaction:", err)
 				}
+			case *HelpMsg:
+				rtm.SendMessage(rtm.NewOutgoingMessage(
+					`:wave: hi there! together, we can go on _any journey you can possibly imagine_. start me with a prompt (ex. `+"`@dungeon The year is 2028 and you are the new president of the United States`"+`) and i'll generate the rest. you can even start with an incomplete sentence and i'll finish it for you.
+
+once we start a journey together, provide next steps and i'll generate the story (ex. `+"`@dungeon Take out the pistol you've been hiding in your back pocket`"+`). there is no limit to what we can do. your creativity is truly the limit.
+
+here are a few scenario ideas:
+
+• You are King George VII, a noble living in the kingdom of Larion. You have a pouch of gold and a small dagger. You are awakened by one of your servants who tells you that your keep is under attack. You look out the window and see an army of orcs marching towards your capital. They are led by a large orc named
+
+• You are Jenny, a patient living in Chicago. You have a hospital bracelet and a pack of bandages. You wake up in an old rundown hospital with no memory of how you got there. You take a look around the room and see that it is empty except for a bed and some medical equipment. The door to your right leads out into
+
+• You are Ada Lovelace, a courier trying to survive in a post apocalyptic world by scavenging among the ruins of what is left. You have a parcel of letters and a small pistol. It's a long and dangerous road from Boston to Charleston, but you're one of the only people who knows the roads well enough to get your parcel of letters there. You set out in the morning and
+
+• You are Michael Jackson, a pop star and soldier trying to survive in a world filled with infected zombies everywhere. You have an automatic rifle and a grenade. Your unit lost a lot of men when the infection broke, but you've managed to keep the small town you're stationed near safe for now. You look over the town and think about how things could be better, but then you remember that's what soldiers do; they make sacrifices.`,
+					msg.ChannelID,
+					slack.RTMsgOptionTS(msg.Timestamp),
+				))
 			default:
 				log.Println("unable to parse message event, unknown...")
 			}
