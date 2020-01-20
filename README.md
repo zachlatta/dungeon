@@ -37,7 +37,7 @@ To-dos:
 - [ ] Better error handling: don't log.Fatal on non-essential errors
 - [ ] Goroutines for message processing
 - [ ] Massive refactor (clearing out TODOs)
-- [ ] Deploy to server
+- [x] Deploy to server
 
 ---
 
