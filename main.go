@@ -619,6 +619,31 @@ func ParseDMMsg(m *slack.MessageEvent) (*DMMsg, bool) {
 	return nil, false
 }
 
+// when users just type @dungeon w/o anything else
+type MentionMsg struct {
+	ChannelID    string
+	MsgTimestamp string
+	Text         string
+	raw          *slack.MessageEvent
+}
+
+func (m MentionMsg) Raw() *slack.MessageEvent {
+	return m.raw
+}
+
+func ParseMentionMsg(m *slack.MessageEvent) (*MentionMsg, bool) {
+	if strings.TrimSpace(m.Text) == "<@"+"USH186XSP"+">" {
+		return &MentionMsg{
+			ChannelID:    m.Channel,
+			MsgTimestamp: m.Timestamp,
+			Text:         m.Text,
+			raw:          m,
+		}, true
+	}
+
+	return nil, false
+}
+
 func parseMessage(msg *slack.MessageEvent) Msg {
 	parsed, ok := ParseStartJourneyMsg(msg)
 	if !ok {
@@ -628,7 +653,12 @@ func parseMessage(msg *slack.MessageEvent) Msg {
 			if !ok {
 				parsed, ok := ParseDMMsg(msg)
 				if !ok {
-					return nil
+					parsed, ok := ParseMentionMsg(msg)
+					if !ok {
+						return nil
+					}
+
+					return parsed
 				}
 
 				return parsed
@@ -912,6 +942,14 @@ here are a few scenario ideas:
 `,
 					msg.ChannelID,
 				))
+			case *MentionMsg:
+				err := api.AddReaction("wave", slack.ItemRef{
+					Channel:   msg.ChannelID,
+					Timestamp: msg.MsgTimestamp,
+				})
+				if err != nil {
+					log.Fatal("failed to add reaction:", err)
+				}
 			default:
 				log.Println("unable to parse message event, unknown...")
 			}
