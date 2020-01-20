@@ -453,6 +453,11 @@ func ParseStartJourneyMsg(m *slack.MessageEvent) (*StartJourneyMsg, bool) {
 		return nil, false
 	}
 
+	// cannot be in dm
+	if strings.HasPrefix(m.Channel, "D") {
+		return nil, false
+	}
+
 	// 3 parts of message: 1. our user id, 2. companions, 3. the prompt to
 	// start journey with
 	regex := regexp.MustCompile(`^<@([A-Z0-9]+)> (\(.*\) )?(.*)$`)
@@ -589,6 +594,31 @@ func ParseInputMsg(m *slack.MessageEvent) (*InputMsg, bool) {
 	}, true
 }
 
+type DMMsg struct {
+	ChannelID string
+	AuthorID  string
+	Text      string
+	raw       *slack.MessageEvent
+}
+
+func (m DMMsg) Raw() *slack.MessageEvent {
+	return m.raw
+}
+
+func ParseDMMsg(m *slack.MessageEvent) (*DMMsg, bool) {
+	// DMs have channel IDs that start with D
+	if strings.HasPrefix(m.Channel, "D") {
+		return &DMMsg{
+			ChannelID: m.Channel,
+			AuthorID:  m.User,
+			Text:      m.Text,
+			raw:       m,
+		}, true
+	}
+
+	return nil, false
+}
+
 func parseMessage(msg *slack.MessageEvent) Msg {
 	parsed, ok := ParseStartJourneyMsg(msg)
 	if !ok {
@@ -596,7 +626,12 @@ func parseMessage(msg *slack.MessageEvent) Msg {
 		if !ok {
 			parsed, ok := ParseInputMsg(msg)
 			if !ok {
-				return nil
+				parsed, ok := ParseDMMsg(msg)
+				if !ok {
+					return nil
+				}
+
+				return parsed
 			}
 
 			return parsed
@@ -859,6 +894,24 @@ func main() {
 					slack.RTMsgOptionTS(msg.ThreadTimestamp),
 				))
 
+			case *DMMsg:
+				rtm.SendMessage(rtm.NewOutgoingMessage(
+					`:wave: hi there! you can only play me in public or private channels (not in DMs). just make sure you invite me (and <@`+"UH50T81A6"+`>, so you can pay me) into the channel and then give me a prompt. some of the nice folks in slack made <#`+"CSHEL6LP5"+`>, if you want to play me there.
+
+when you give me a prompt, just make sure to @mention my name followed by the scenario you want to start with (ex. `+"`@dungeon The year is 2028 and you are the new president of the United States`"+`). you can even leave an incomplete sentence for me and i'll finish it for you.
+
+here are a few scenario ideas:
+
+• You are King George VII, a noble living in the kingdom of Larion. You have a pouch of gold and a small dagger. You are awakened by one of your servants who tells you that your keep is under attack. You look out the window and see an army of orcs marching towards your capital. They are led by a large orc named
+
+• You are Jenny, a patient living in Chicago. You have a hospital bracelet and a pack of bandages. You wake up in an old rundown hospital with no memory of how you got there. You take a look around the room and see that it is empty except for a bed and some medical equipment. The door to your right leads out into
+
+• You are Ada Lovelace, a courier trying to survive in a post apocalyptic world by scavenging among the ruins of what is left. You have a parcel of letters and a small pistol. It's a long and dangerous road from Boston to Charleston, but you're one of the only people who knows the roads well enough to get your parcel of letters there. You set out in the morning and
+
+• You are Michael Jackson, a pop star and soldier trying to survive in a world filled with infected zombies everywhere. You have an automatic rifle and a grenade. Your unit lost a lot of men when the infection broke, but you've managed to keep the small town you're stationed near safe for now. You look over the town and think about how things could be better, but then you remember that's what soldiers do; they make sacrifices.
+`,
+					msg.ChannelID,
+				))
 			default:
 				log.Println("unable to parse message event, unknown...")
 			}
