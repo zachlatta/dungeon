@@ -20,6 +20,9 @@ Other asides:
 
 - @dungeon should invite @banker to the channel if it's not already in it
 - Goroutines to prevent blocking
+- Option to not require @mentions in replies (maybe? makes it way easier to play on mobile)
+- `@dungeon public link` to get a public link to a thread
+- Figure out how to allow private games in DMs
 
 To-dos:
 
@@ -27,9 +30,8 @@ To-dos:
 - [x] Working DB for multiple sessions
 - [x] Support companions
 - [x] Check to make sure correct users are messaging
-- [ ] Support @user mentions in prompts and inputs (so someone can say "Do X with @Jacob" or something like that)
 - [ ] Remove patron storage
-- [ ] Don't log.Fatal on non-essential errors
+- [ ] Better error handling: don't log.Fatal on non-essential errors
 - [ ] Goroutines for message processing
 - [ ] Massive refactor (clearing out TODOs)
 
