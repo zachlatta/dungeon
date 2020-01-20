@@ -38,6 +38,7 @@ To-dos:
 - [ ] Goroutines for message processing
 - [ ] Massive refactor (clearing out TODOs)
 - [x] Deploy to server
+- [ ] Make the README beautiful
 - [ ] #ship it!
 
 ---
