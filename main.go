@@ -127,7 +127,6 @@ type Session struct {
 	Companions      []SlackUser
 	CostGP          int
 	Paid            bool
-	Patron          SlackUser
 	Prompt          string
 	SessionID       int
 }
@@ -140,7 +139,6 @@ type airtableSession struct {
 		Companions      string
 		Cost            int  `json:"Cost (GP)"`
 		Paid            bool `json:"Paid?"`
-		Patron          string
 		Prompt          string
 		SessionID       int `json:"Session ID,omitempty"`
 	} `json:"fields"`
@@ -160,14 +158,6 @@ func sessionFromAirtable(as airtableSession) (Session, error) {
 		}
 	}
 
-	var patron SlackUser
-	if as.Fields.Patron != "" {
-		patron, err = SlackUserFromString(as.Fields.Patron)
-		if err != nil {
-			return Session{}, err
-		}
-	}
-
 	return Session{
 		AirtableID:      as.AirtableID,
 		ThreadTimestamp: as.Fields.ThreadTimestamp,
@@ -175,7 +165,6 @@ func sessionFromAirtable(as airtableSession) (Session, error) {
 		Companions:      companions,
 		CostGP:          as.Fields.Cost,
 		Paid:            as.Fields.Paid,
-		Patron:          patron,
 		Prompt:          as.Fields.Prompt,
 		SessionID:       as.Fields.SessionID,
 	}, nil
@@ -216,12 +205,11 @@ func (db *DB) GetSession(threadTs string) (Session, error) {
 	return sessionFromAirtable(airtableSessions[0])
 }
 
-func (db *DB) MarkSessionPaidAndStarted(session Session, patron SlackUser, sessionID int) (Session, error) {
+func (db *DB) MarkSessionPaidAndStarted(session Session, sessionID int) (Session, error) {
 	as := airtableSession{}
 
 	updatedFields := map[string]interface{}{
 		"Paid?":      true,
-		"Patron":     patron.ToString(),
 		"Session ID": sessionID,
 	}
 
@@ -824,13 +812,7 @@ func main() {
 					log.Fatal("ugh, failed", err)
 				}
 
-				// TODO make this actually work
-				patron, err := SlackUserFromID(api, msg.AuthorID)
-				if err != nil {
-					log.Fatal("failed to get deets:", err)
-				}
-
-				session, err = db.MarkSessionPaidAndStarted(session, patron, sessionID)
+				session, err = db.MarkSessionPaidAndStarted(session, sessionID)
 				if err != nil {
 					log.Fatal("failed to update airtable record:", err)
 				}
