@@ -401,17 +401,30 @@ func (c AIDungeonClient) Input(sessionId int, text string) (output string, err e
 // SLACK MESSAGE PARSING //
 
 type Msg interface {
+	ChannelID() string
+	Timestamp() string
+	ThreadTimestamp() string
 	Raw() *slack.MessageEvent
 }
 
 type StartJourneyMsg struct {
-	AuthorID        string
-	AuthorName      string
-	ChannelID       string
-	ThreadTimestamp string
-	CompanionIDs    []string
-	Prompt          string
-	raw             *slack.MessageEvent
+	AuthorID     string
+	AuthorName   string
+	CompanionIDs []string
+	Prompt       string
+	raw          *slack.MessageEvent
+}
+
+func (m StartJourneyMsg) ChannelID() string {
+	return m.raw.Channel
+}
+
+func (m StartJourneyMsg) Timestamp() string {
+	return m.raw.Timestamp
+}
+
+func (m StartJourneyMsg) ThreadTimestamp() string {
+	return m.raw.Timestamp
 }
 
 func (m StartJourneyMsg) Raw() *slack.MessageEvent {
@@ -475,23 +488,31 @@ func ParseStartJourneyMsg(m *slack.MessageEvent) (*StartJourneyMsg, bool) {
 	}
 
 	return &StartJourneyMsg{
-		AuthorID:        m.User,
-		ChannelID:       m.Channel,
-		ThreadTimestamp: m.Timestamp,
-		CompanionIDs:    companionIDs,
-		Prompt:          promptText,
-		raw:             m,
+		AuthorID:     m.User,
+		CompanionIDs: companionIDs,
+		Prompt:       promptText,
+		raw:          m,
 	}, true
 }
 
 type ReceiveMoneyMsg struct {
-	AuthorID        string
-	RecipientID     string
-	ChannelID       string
-	ThreadTimestamp string
-	GP              int
-	Reason          string
-	raw             *slack.MessageEvent
+	AuthorID    string
+	RecipientID string
+	GP          int
+	Reason      string
+	raw         *slack.MessageEvent
+}
+
+func (m ReceiveMoneyMsg) ChannelID() string {
+	return m.raw.Channel
+}
+
+func (m ReceiveMoneyMsg) Timestamp() string {
+	return m.raw.Timestamp
+}
+
+func (m ReceiveMoneyMsg) ThreadTimestamp() string {
+	return m.raw.ThreadTimestamp
 }
 
 func (m ReceiveMoneyMsg) Raw() *slack.MessageEvent {
@@ -528,22 +549,30 @@ func ParseReceiveMoneyMsg(m *slack.MessageEvent) (*ReceiveMoneyMsg, bool) {
 	}
 
 	return &ReceiveMoneyMsg{
-		AuthorID:        m.User,
-		RecipientID:     recipientUserID,
-		ChannelID:       m.Channel,
-		ThreadTimestamp: m.ThreadTimestamp,
-		GP:              gpAmount,
-		Reason:          reasonGiven,
-		raw:             m,
+		AuthorID:    m.User,
+		RecipientID: recipientUserID,
+		GP:          gpAmount,
+		Reason:      reasonGiven,
+		raw:         m,
 	}, true
 }
 
 type InputMsg struct {
-	AuthorID        string
-	ChannelID       string
-	ThreadTimestamp string
-	Input           string
-	raw             *slack.MessageEvent
+	AuthorID string
+	Input    string
+	raw      *slack.MessageEvent
+}
+
+func (m InputMsg) ChannelID() string {
+	return m.raw.Channel
+}
+
+func (m InputMsg) Timestamp() string {
+	return m.raw.Timestamp
+}
+
+func (m InputMsg) ThreadTimestamp() string {
+	return m.raw.ThreadTimestamp
 }
 
 func (m InputMsg) Raw() *slack.MessageEvent {
@@ -574,19 +603,28 @@ func ParseInputMsg(m *slack.MessageEvent) (*InputMsg, bool) {
 	}
 
 	return &InputMsg{
-		AuthorID:        m.User,
-		ChannelID:       m.Channel,
-		ThreadTimestamp: m.ThreadTimestamp,
-		Input:           input,
-		raw:             m,
+		AuthorID: m.User,
+		Input:    input,
+		raw:      m,
 	}, true
 }
 
 type DMMsg struct {
-	ChannelID string
-	AuthorID  string
-	Text      string
-	raw       *slack.MessageEvent
+	AuthorID string
+	Text     string
+	raw      *slack.MessageEvent
+}
+
+func (m DMMsg) ChannelID() string {
+	return m.raw.Channel
+}
+
+func (m DMMsg) Timestamp() string {
+	return m.raw.Timestamp
+}
+
+func (m DMMsg) ThreadTimestamp() string {
+	return m.raw.ThreadTimestamp
 }
 
 func (m DMMsg) Raw() *slack.MessageEvent {
@@ -597,10 +635,9 @@ func ParseDMMsg(m *slack.MessageEvent) (*DMMsg, bool) {
 	// DMs have channel IDs that start with D
 	if strings.HasPrefix(m.Channel, "D") {
 		return &DMMsg{
-			ChannelID: m.Channel,
-			AuthorID:  m.User,
-			Text:      m.Text,
-			raw:       m,
+			AuthorID: m.User,
+			Text:     m.Text,
+			raw:      m,
 		}, true
 	}
 
@@ -609,10 +646,20 @@ func ParseDMMsg(m *slack.MessageEvent) (*DMMsg, bool) {
 
 // when users just type @dungeon w/o anything else
 type MentionMsg struct {
-	ChannelID    string
-	MsgTimestamp string
-	Text         string
-	raw          *slack.MessageEvent
+	Text string
+	raw  *slack.MessageEvent
+}
+
+func (m MentionMsg) ChannelID() string {
+	return m.raw.Channel
+}
+
+func (m MentionMsg) Timestamp() string {
+	return m.raw.Timestamp
+}
+
+func (m MentionMsg) ThreadTimestamp() string {
+	return m.raw.ThreadTimestamp
 }
 
 func (m MentionMsg) Raw() *slack.MessageEvent {
@@ -622,10 +669,8 @@ func (m MentionMsg) Raw() *slack.MessageEvent {
 func ParseMentionMsg(m *slack.MessageEvent) (*MentionMsg, bool) {
 	if strings.TrimSpace(m.Text) == "<@"+"USH186XSP"+">" {
 		return &MentionMsg{
-			ChannelID:    m.Channel,
-			MsgTimestamp: m.Timestamp,
-			Text:         m.Text,
-			raw:          m,
+			Text: m.Text,
+			raw:  m,
 		}, true
 	}
 
@@ -633,10 +678,20 @@ func ParseMentionMsg(m *slack.MessageEvent) (*MentionMsg, bool) {
 }
 
 type HelpMsg struct {
-	ChannelID string
-	Timestamp string
-	Text      string
-	raw       *slack.MessageEvent
+	Text string
+	raw  *slack.MessageEvent
+}
+
+func (m HelpMsg) ChannelID() string {
+	return m.raw.Channel
+}
+
+func (m HelpMsg) Timestamp() string {
+	return m.raw.Timestamp
+}
+
+func (m HelpMsg) ThreadTimestamp() string {
+	return m.raw.ThreadTimestamp
 }
 
 func (m HelpMsg) Raw() *slack.MessageEvent {
@@ -646,10 +701,8 @@ func (m HelpMsg) Raw() *slack.MessageEvent {
 func ParseHelpMsg(m *slack.MessageEvent) (*HelpMsg, bool) {
 	if strings.TrimSpace(m.Text) == "<@"+"USH186XSP"+">"+" help" {
 		return &HelpMsg{
-			ChannelID: m.Channel,
-			Timestamp: m.Timestamp,
-			Text:      m.Text,
-			raw:       m,
+			Text: m.Text,
+			raw:  m,
 		}, true
 	}
 
@@ -699,6 +752,24 @@ func parseMessage(msg *slack.MessageEvent) Msg {
 
 // MAIN LOGIC //
 
+func handleSlackError(rtm *slack.RTM, msg Msg, err error) {
+	log.Println("slack api error:", err)
+	rtm.SendMessage(rtm.NewOutgoingMessage(
+		"Sorry, I'm having trouble connecting to Slack. Try again? (slack error)",
+		msg.ChannelID(),
+		slack.RTMsgOptionTS(msg.Timestamp()),
+	))
+}
+
+func handleDBError(rtm *slack.RTM, msg Msg, err error) {
+	log.Println("airtable api error:", err)
+	rtm.SendMessage(rtm.NewOutgoingMessage(
+		"Gosh, I'm having trouble with my brain right now. Sorry about that. Try again? (db error)",
+		msg.ChannelID(),
+		slack.RTMsgOptionTS(msg.Timestamp()),
+	))
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -715,7 +786,7 @@ func main() {
 
 	aidungeon, err := NewAIDungeonClient(aidungeonEmail, aidungeonPassword)
 	if err != nil {
-		log.Fatal("error creating aidungeon client:", err)
+		log.Fatal("error connecting to aidungeon:", err)
 	}
 
 	log.Println("logged into ai dungeon")
@@ -724,7 +795,7 @@ func main() {
 
 	db, err := NewDB(airtableAPIKey, airtableBaseID)
 	if err != nil {
-		log.Fatal("error creating airtable client:", err)
+		log.Fatal("connecting with airtable:", err)
 	}
 
 	log.Println("authenticated with airtable")
@@ -739,6 +810,7 @@ func main() {
 
 		switch ev := rawMsg.Data.(type) {
 		case *slack.MessageEvent:
+			// ignore system messages
 			if ev.User == "USLACKBOT" || ev.User == "" {
 				continue
 			}
@@ -755,47 +827,52 @@ func main() {
 
 				creator, err := SlackUserFromID(api, msg.AuthorID)
 				if err != nil {
-					// TODO better error handling
-					log.Fatal("error creating creator:", err)
+					handleSlackError(rtm, msg, err)
+					continue
 				}
 
 				companions, err := SlackUsersFromIDs(api, msg.CompanionIDs)
 				if err != nil {
-					log.Fatal("error creating companions:", err)
+					handleSlackError(rtm, msg, err)
+					continue
 				}
 
 				session, err := db.CreateSession(
-					msg.ThreadTimestamp,
+					msg.Timestamp(),
 					creator,
 					companions,
 					CostToPlay,
 					msg.Prompt,
 				)
+				if err != nil {
+					handleDBError(rtm, msg, err)
+					continue
+				}
 
 				log.Println("SESSION CREATED", session)
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
 					"_groggily wakes up..._",
-					msg.ChannelID,
-					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					msg.ChannelID(),
+					slack.RTMsgOptionTS(msg.Timestamp()),
 				))
 
 				time.Sleep(time.Second * 1)
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
 					"Ugh... it's been a while. My bones are rough. My bones are weak. Load me up with "+strconv.Itoa(CostToPlay)+"GP and our journey together will make your week.",
-					msg.ChannelID,
-					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					msg.ChannelID(),
+					slack.RTMsgOptionTS(msg.Timestamp()),
 				))
 			case *ReceiveMoneyMsg:
 				log.Println("Hoo hah, I got the money:", msg)
 
-				session, err := db.GetSession(msg.ThreadTimestamp)
+				session, err := db.GetSession(msg.ThreadTimestamp())
 				if err != nil {
 					rtm.SendMessage(rtm.NewOutgoingMessage(
 						"Wow, I am truly flattered. Thank you!",
-						msg.ChannelID,
-						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+						msg.ChannelID(),
+						slack.RTMsgOptionTS(msg.ThreadTimestamp()),
 					))
 					log.Println("received money, but unable to find session:", err, "-", msg)
 
@@ -805,8 +882,8 @@ func main() {
 				if session.Paid {
 					rtm.SendMessage(rtm.NewOutgoingMessage(
 						"This journey is already paid for, but I'll still happily take your money!",
-						msg.ChannelID,
-						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+						msg.ChannelID(),
+						slack.RTMsgOptionTS(session.ThreadTimestamp),
 					))
 					log.Println(
 						"received money for already paid session:",
@@ -821,14 +898,14 @@ func main() {
 				if msg.Reason != "" {
 					rtm.SendMessage(rtm.NewOutgoingMessage(
 						`"`+strings.TrimSpace(msg.Reason)+`", huh? Hope I can live up to that. Let me think on this one...`,
-						msg.ChannelID,
-						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+						msg.ChannelID(),
+						slack.RTMsgOptionTS(session.ThreadTimestamp),
 					))
 				} else {
 					rtm.SendMessage(rtm.NewOutgoingMessage(
 						"Ah, now that's a bit better. Let me think on this one...",
-						msg.ChannelID,
-						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+						msg.ChannelID(),
+						slack.RTMsgOptionTS(session.ThreadTimestamp),
 					))
 				}
 
@@ -836,12 +913,12 @@ func main() {
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
 					"_:musical_note: elevator music :musical_note:_",
-					msg.ChannelID,
-					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					msg.ChannelID(),
+					slack.RTMsgOptionTS(session.ThreadTimestamp),
 				))
 
 				// indicate we're typing
-				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID))
+				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID()))
 
 				sessionID, output, err := aidungeon.CreateSession(session.Prompt)
 				if err != nil {
@@ -859,19 +936,19 @@ func main() {
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
 					"_(remember to @mention me in your replies!)_",
-					msg.ChannelID,
-					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					msg.ChannelID(),
+					slack.RTMsgOptionTS(session.ThreadTimestamp),
 				))
 
 				// indicate we're typing
-				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID))
+				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID()))
 
 				time.Sleep(time.Second * 1)
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
 					output,
-					msg.ChannelID,
-					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					msg.ChannelID(),
+					slack.RTMsgOptionTS(session.ThreadTimestamp),
 				))
 
 				fmt.Println("SESSION ID:", sessionID)
@@ -879,13 +956,13 @@ func main() {
 			case *InputMsg:
 				log.Println("HOO HAH I GOT THE INPUT:", msg)
 
-				session, err := db.GetSession(msg.ThreadTimestamp)
+				session, err := db.GetSession(msg.Timestamp())
 				if err != nil {
 					log.Println("input attemped, unable to find session:", err, "-", msg)
 					rtm.SendMessage(rtm.NewOutgoingMessage(
 						"...I'm sorry. What are you talking about? We're not on a journey together right now.",
-						msg.ChannelID,
-						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+						msg.ChannelID(),
+						slack.RTMsgOptionTS(msg.Timestamp()),
 					))
 
 					continue
@@ -913,8 +990,8 @@ func main() {
 					log.Println("input attempted from non-creator or contributor:", author.ToString(), "-", msg.Raw())
 					rtm.SendMessage(rtm.NewOutgoingMessage(
 						"...sorry my friend, but this isn't your journey to embark on.",
-						msg.ChannelID,
-						slack.RTMsgOptionTS(msg.ThreadTimestamp),
+						msg.ChannelID(),
+						slack.RTMsgOptionTS(msg.Timestamp()),
 					))
 
 					continue
@@ -925,7 +1002,7 @@ func main() {
 				}
 
 				// indicate we're typing
-				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID))
+				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID()))
 
 				output, err := aidungeon.Input(session.SessionID, msg.Input)
 				if err != nil {
@@ -938,8 +1015,8 @@ func main() {
 
 				rtm.SendMessage(rtm.NewOutgoingMessage(
 					output,
-					msg.ChannelID,
-					slack.RTMsgOptionTS(msg.ThreadTimestamp),
+					msg.ChannelID(),
+					slack.RTMsgOptionTS(msg.Timestamp()),
 				))
 
 			case *DMMsg:
@@ -958,12 +1035,12 @@ here are a few scenario ideas:
 
 • You are Michael Jackson, a pop star and soldier trying to survive in a world filled with infected zombies everywhere. You have an automatic rifle and a grenade. Your unit lost a lot of men when the infection broke, but you've managed to keep the small town you're stationed near safe for now. You look over the town and think about how things could be better, but then you remember that's what soldiers do; they make sacrifices.
 `,
-					msg.ChannelID,
+					msg.ChannelID(),
 				))
 			case *MentionMsg:
 				err := api.AddReaction("wave", slack.ItemRef{
-					Channel:   msg.ChannelID,
-					Timestamp: msg.MsgTimestamp,
+					Channel:   msg.ChannelID(),
+					Timestamp: msg.Timestamp(),
 				})
 				if err != nil {
 					log.Fatal("failed to add reaction:", err)
@@ -983,8 +1060,8 @@ here are a few scenario ideas:
 • You are Ada Lovelace, a courier trying to survive in a post apocalyptic world by scavenging among the ruins of what is left. You have a parcel of letters and a small pistol. It's a long and dangerous road from Boston to Charleston, but you're one of the only people who knows the roads well enough to get your parcel of letters there. You set out in the morning and
 
 • You are Michael Jackson, a pop star and soldier trying to survive in a world filled with infected zombies everywhere. You have an automatic rifle and a grenade. Your unit lost a lot of men when the infection broke, but you've managed to keep the small town you're stationed near safe for now. You look over the town and think about how things could be better, but then you remember that's what soldiers do; they make sacrifices.`,
-					msg.ChannelID,
-					slack.RTMsgOptionTS(msg.Timestamp),
+					msg.ChannelID(),
+					slack.RTMsgOptionTS(msg.Timestamp()),
 				))
 			default:
 				log.Println("unable to parse message event, unknown...")
