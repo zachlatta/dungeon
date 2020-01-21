@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/nlopes/slack"
@@ -135,8 +134,6 @@ func main() {
 
 				threadReply(rtm, msg, "_groggily wakes up..._")
 
-				time.Sleep(time.Second * 1)
-
 				threadReply(rtm, msg, "Ugh... it's been a while. My bones are rough. My bones are weak. Load me up with "+strconv.Itoa(CostToPlay)+"GP and our journey together will make your week.")
 			case *ReceiveMoneyMsg:
 				log.Println("Hoo hah, I got the money:", msg)
@@ -168,8 +165,6 @@ func main() {
 				} else {
 					threadReply(rtm, msg, "Ah, now that's a bit better. Let me think on this one...")
 				}
-
-				time.Sleep(time.Second * 1)
 
 				threadReply(rtm, msg, "_:musical_note: elevator music :musical_note:_")
 

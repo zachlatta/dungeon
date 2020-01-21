@@ -36,6 +36,7 @@ To-dos:
 - [x] Remove patron storage
 - [x] Better error handling: don't log.Fatal on non-essential errors
 - [ ] Goroutines for message processing
+  - [ ] Make message timing nice
 - [ ] Massive refactor (clearing out TODOs)
 - [x] Deploy to server
 - [ ] Make the README beautiful
