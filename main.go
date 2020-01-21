@@ -752,22 +752,27 @@ func parseMessage(msg *slack.MessageEvent) Msg {
 
 // MAIN LOGIC //
 
+func threadReply(rtm *slack.RTM, msg Msg, text string) {
+	rtm.SendMessage(rtm.NewOutgoingMessage(
+		text,
+		msg.ChannelID(),
+		slack.RTMsgOptionTS(msg.ThreadTimestamp()),
+	))
+}
+
 func handleSlackError(rtm *slack.RTM, msg Msg, err error) {
 	log.Println("slack api error:", err)
-	rtm.SendMessage(rtm.NewOutgoingMessage(
-		"Sorry, I'm having trouble connecting to Slack. Try again? (slack error)",
-		msg.ChannelID(),
-		slack.RTMsgOptionTS(msg.Timestamp()),
-	))
+	threadReply(rtm, msg, "Sorry, I'm having trouble connecting to Slack. Try again? (slack error)")
 }
 
 func handleDBError(rtm *slack.RTM, msg Msg, err error) {
 	log.Println("airtable api error:", err)
-	rtm.SendMessage(rtm.NewOutgoingMessage(
-		"Gosh, I'm having trouble with my brain right now. Sorry about that. Try again? (db error)",
-		msg.ChannelID(),
-		slack.RTMsgOptionTS(msg.Timestamp()),
-	))
+	threadReply(rtm, msg, "Gosh, I'm having trouble remembering things right now. Sorry about that. Try again in a bit? (db error)")
+}
+
+func handleDungeonError(rtm *slack.RTM, msg Msg, err error) {
+	log.Println("ai dungeon api error:", err)
+	threadReply(rtm, msg, "Gosh, I'm having trouble thinking about our journey right now. Sorry about that. Try again in a bit? (backend error)")
 }
 
 func main() {
@@ -795,7 +800,7 @@ func main() {
 
 	db, err := NewDB(airtableAPIKey, airtableBaseID)
 	if err != nil {
-		log.Fatal("connecting with airtable:", err)
+		log.Fatal("error connecting with airtable:", err)
 	}
 
 	log.Println("authenticated with airtable")
@@ -851,127 +856,77 @@ func main() {
 
 				log.Println("SESSION CREATED", session)
 
-				rtm.SendMessage(rtm.NewOutgoingMessage(
-					"_groggily wakes up..._",
-					msg.ChannelID(),
-					slack.RTMsgOptionTS(msg.Timestamp()),
-				))
+				threadReply(rtm, msg, "_groggily wakes up..._")
 
 				time.Sleep(time.Second * 1)
 
-				rtm.SendMessage(rtm.NewOutgoingMessage(
-					"Ugh... it's been a while. My bones are rough. My bones are weak. Load me up with "+strconv.Itoa(CostToPlay)+"GP and our journey together will make your week.",
-					msg.ChannelID(),
-					slack.RTMsgOptionTS(msg.Timestamp()),
-				))
+				threadReply(rtm, msg, "Ugh... it's been a while. My bones are rough. My bones are weak. Load me up with "+strconv.Itoa(CostToPlay)+"GP and our journey together will make your week.")
 			case *ReceiveMoneyMsg:
 				log.Println("Hoo hah, I got the money:", msg)
 
 				session, err := db.GetSession(msg.ThreadTimestamp())
 				if err != nil {
-					rtm.SendMessage(rtm.NewOutgoingMessage(
-						"Wow, I am truly flattered. Thank you!",
-						msg.ChannelID(),
-						slack.RTMsgOptionTS(msg.ThreadTimestamp()),
-					))
 					log.Println("received money, but unable to find session:", err, "-", msg)
-
+					threadReply(rtm, msg, "Wow, I am truly flattered. Thank you!")
 					continue
 				}
 
 				if session.Paid {
-					rtm.SendMessage(rtm.NewOutgoingMessage(
-						"This journey is already paid for, but I'll still happily take your money!",
-						msg.ChannelID(),
-						slack.RTMsgOptionTS(session.ThreadTimestamp),
-					))
-					log.Println(
-						"received money for already paid session:",
-						session.ThreadTimestamp,
-						"-",
-						msg,
-					)
-
+					log.Println("received money for already paid session:", session.ThreadTimestamp, "-", msg)
+					threadReply(rtm, msg, "This journey is already paid for, but I'll still happily take your money!")
 					continue
 				}
 
 				if msg.Reason != "" {
-					rtm.SendMessage(rtm.NewOutgoingMessage(
-						`"`+strings.TrimSpace(msg.Reason)+`", huh? Hope I can live up to that. Let me think on this one...`,
-						msg.ChannelID(),
-						slack.RTMsgOptionTS(session.ThreadTimestamp),
-					))
+					threadReply(rtm, msg, `"`+strings.TrimSpace(msg.Reason)+`", huh? Hope I can live up to that. Let me think on this one...`)
 				} else {
-					rtm.SendMessage(rtm.NewOutgoingMessage(
-						"Ah, now that's a bit better. Let me think on this one...",
-						msg.ChannelID(),
-						slack.RTMsgOptionTS(session.ThreadTimestamp),
-					))
+					threadReply(rtm, msg, "Ah, now that's a bit better. Let me think on this one...")
 				}
 
 				time.Sleep(time.Second * 1)
 
-				rtm.SendMessage(rtm.NewOutgoingMessage(
-					"_:musical_note: elevator music :musical_note:_",
-					msg.ChannelID(),
-					slack.RTMsgOptionTS(session.ThreadTimestamp),
-				))
+				threadReply(rtm, msg, "_:musical_note: elevator music :musical_note:_")
 
 				// indicate we're typing
 				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID()))
 
 				sessionID, output, err := aidungeon.CreateSession(session.Prompt)
 				if err != nil {
-					log.Fatal("ugh, failed", err)
+					handleDungeonError(rtm, msg, err)
+					continue
 				}
 
 				session, err = db.MarkSessionPaidAndStarted(session, sessionID)
 				if err != nil {
-					log.Fatal("failed to update airtable record:", err)
+					handleDBError(rtm, msg, err)
+					continue
 				}
 
 				if err := db.CreateStoryItem(session, "Output", nil, output); err != nil {
-					log.Fatal("failed to log output:", err)
+					handleDBError(rtm, msg, err)
+					continue
 				}
 
-				rtm.SendMessage(rtm.NewOutgoingMessage(
-					"_(remember to @mention me in your replies!)_",
-					msg.ChannelID(),
-					slack.RTMsgOptionTS(session.ThreadTimestamp),
-				))
+				threadReply(rtm, msg, "_(remember to @mention me in your replies!)_")
 
-				// indicate we're typing
-				rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID()))
+				threadReply(rtm, msg, output)
 
-				time.Sleep(time.Second * 1)
-
-				rtm.SendMessage(rtm.NewOutgoingMessage(
-					output,
-					msg.ChannelID(),
-					slack.RTMsgOptionTS(session.ThreadTimestamp),
-				))
-
-				fmt.Println("SESSION ID:", sessionID)
+				log.Println("SESSION ID:", sessionID)
 
 			case *InputMsg:
 				log.Println("HOO HAH I GOT THE INPUT:", msg)
 
-				session, err := db.GetSession(msg.Timestamp())
+				session, err := db.GetSession(msg.ThreadTimestamp())
 				if err != nil {
 					log.Println("input attemped, unable to find session:", err, "-", msg)
-					rtm.SendMessage(rtm.NewOutgoingMessage(
-						"...I'm sorry. What are you talking about? We're not on a journey together right now.",
-						msg.ChannelID(),
-						slack.RTMsgOptionTS(msg.Timestamp()),
-					))
-
+					threadReply(rtm, msg, "...I'm sorry. What are you talking about? We're not on a journey together right now.")
 					continue
 				}
 
 				author, err := SlackUserFromID(api, msg.AuthorID)
 				if err != nil {
-					// TODO better errors
-					log.Fatal("failed to get slack user info:", err)
+					handleDBError(rtm, msg, err)
+					continue
 				}
 
 				authedInput := false
@@ -988,17 +943,13 @@ func main() {
 
 				if !authedInput {
 					log.Println("input attempted from non-creator or contributor:", author.ToString(), "-", msg.Raw())
-					rtm.SendMessage(rtm.NewOutgoingMessage(
-						"...sorry my friend, but this isn't your journey to embark on.",
-						msg.ChannelID(),
-						slack.RTMsgOptionTS(msg.Timestamp()),
-					))
-
+					threadReply(rtm, msg, "...sorry my friend, but this isn't your journey to embark on.")
 					continue
 				}
 
 				if err := db.CreateStoryItem(session, "Input", &author, msg.Input); err != nil {
-					log.Fatal("failed to log input:", err)
+					handleDBError(rtm, msg, err)
+					continue
 				}
 
 				// indicate we're typing
@@ -1006,18 +957,16 @@ func main() {
 
 				output, err := aidungeon.Input(session.SessionID, msg.Input)
 				if err != nil {
-					log.Fatal("ugh, failed", err)
+					handleDungeonError(rtm, msg, err)
+					continue
 				}
 
 				if err := db.CreateStoryItem(session, "Output", nil, output); err != nil {
-					log.Fatal("failed to log output:", err)
+					handleDBError(rtm, msg, err)
+					continue
 				}
 
-				rtm.SendMessage(rtm.NewOutgoingMessage(
-					output,
-					msg.ChannelID(),
-					slack.RTMsgOptionTS(msg.Timestamp()),
-				))
+				threadReply(rtm, msg, output)
 
 			case *DMMsg:
 				rtm.SendMessage(rtm.NewOutgoingMessage(
@@ -1043,10 +992,11 @@ here are a few scenario ideas:
 					Timestamp: msg.Timestamp(),
 				})
 				if err != nil {
-					log.Fatal("failed to add reaction:", err)
+					handleSlackError(rtm, msg, err)
+					continue
 				}
 			case *HelpMsg:
-				rtm.SendMessage(rtm.NewOutgoingMessage(
+				threadReply(rtm, msg,
 					`:wave: hi there! together, we can go on _any journey you can possibly imagine_. start me with a prompt (ex. `+"`@dungeon The year is 2028 and you are the new president of the United States`"+`) and i'll generate the rest. you can even start with an incomplete sentence and i'll finish it for you.
 
 once we start a journey together, provide next steps and i'll generate the story (ex. `+"`@dungeon Take out the pistol you've been hiding in your back pocket`"+`). there is no limit to what we can do. your creativity is truly the limit.
@@ -1060,9 +1010,7 @@ here are a few scenario ideas:
 • You are Ada Lovelace, a courier trying to survive in a post apocalyptic world by scavenging among the ruins of what is left. You have a parcel of letters and a small pistol. It's a long and dangerous road from Boston to Charleston, but you're one of the only people who knows the roads well enough to get your parcel of letters there. You set out in the morning and
 
 • You are Michael Jackson, a pop star and soldier trying to survive in a world filled with infected zombies everywhere. You have an automatic rifle and a grenade. Your unit lost a lot of men when the infection broke, but you've managed to keep the small town you're stationed near safe for now. You look over the town and think about how things could be better, but then you remember that's what soldiers do; they make sacrifices.`,
-					msg.ChannelID(),
-					slack.RTMsgOptionTS(msg.Timestamp()),
-				))
+				)
 			default:
 				log.Println("unable to parse message event, unknown...")
 			}

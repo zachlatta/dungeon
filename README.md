@@ -34,7 +34,7 @@ To-dos:
 - [x] Handle flow where people only mention `@dungeon` by emoting
 - [x] Handle `@dungeon help`
 - [x] Remove patron storage
-- [ ] Better error handling: don't log.Fatal on non-essential errors
+- [x] Better error handling: don't log.Fatal on non-essential errors
 - [ ] Goroutines for message processing
 - [ ] Massive refactor (clearing out TODOs)
 - [x] Deploy to server
