@@ -144,7 +144,16 @@ func main() {
 					continue
 				}
 
-				if msg.Reason != "" {
+				if msg.GP < session.CostGP {
+					log.Println("received money, but wrong amount. expected", session.CostGP, "but got", msg.GP)
+					threadReply(rtm, msg, "Sorry my friend, but that's the wrong amount. Try again.")
+					continue
+				}
+
+				if msg.GP > session.CostGP {
+					log.Println("received money greater than expected amount. expected", session.CostGP, "and received", msg.GP)
+					threadReply(rtm, msg, strconv.Itoa(msg.GP)+"GP? Wow! That's more than I expected. Let me think on this one...")
+				} else if msg.Reason != "" {
 					threadReply(rtm, msg, `"`+strings.TrimSpace(msg.Reason)+`", huh? Hope I can live up to that. Let me think on this one...`)
 				} else {
 					threadReply(rtm, msg, "Ah, now that's a bit better. Let me think on this one...")

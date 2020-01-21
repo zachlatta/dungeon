@@ -152,9 +152,9 @@ func ParseReceiveMoneyMsg(m *slack.MessageEvent) (*ReceiveMoneyMsg, bool) {
 		return nil, false
 	}
 
-	// check the details, make sure this transfer actually happened for the right amount
+	// make sure this is an actual transfer
 	// TODO: figure out better way to work with banker user ID TODO: dynamically get our user ID
-	if m.User != "UH50T81A6" || recipientUserID != "USH186XSP" || gpAmount != CostToPlay {
+	if m.User != "UH50T81A6" || recipientUserID != "USH186XSP" {
 		return nil, false
 	}
 
