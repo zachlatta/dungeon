@@ -25,7 +25,7 @@ If you want to see what I'm capable of, go on the [Hack Club Slack](https://slac
 - Can make `@dungeon` run you for only, for you + friends, or for anyone to play. Default to for you only. (so people can comment in real-time in the Slack thread)
 - Store data in Airtable
 
-#### Is this just a Slack client for AI Dungeon?
+#### ...so is this just a Slack client for AI Dungeon?
 
 Yeah. And here are the important parts of AI Dungeon's API:
 
