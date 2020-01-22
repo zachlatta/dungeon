@@ -175,8 +175,12 @@ func (db *DB) CreateSession(threadTs string, creator SlackUser, companions []Sla
 
 func (db *DB) GetSession(threadTs string) (Session, error) {
 	listParams := airtable.ListParameters{
-		// TODO Prevent string escaping problems
-		FilterByFormula: `{Thread Timestamp} = "` + threadTs + `"`,
+		// I can't find a great way to escape values here. The best
+		// thing I could find online suggested wrapping values in both
+		// single and double quotes.
+		//
+		// Source: https://community.airtable.com/t/using-api-to-filter-records-fails-when-the-value-contains-a-comma/20035/4
+		FilterByFormula: `{Thread Timestamp} = '"` + threadTs + `"'`,
 	}
 
 	airtableSessions := []airtableSession{}

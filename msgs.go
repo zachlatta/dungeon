@@ -135,8 +135,6 @@ func ParseStartJourneyMsg(m *slack.MessageEvent) (*StartJourneyMsg, bool) {
 	companionText := matches[2]
 	promptText := matches[3]
 
-	// if this doesn't look like a start journey msg, skip
-	// TODO: dynamically get our user ID
 	if myUserID != SelfID || promptText == "" {
 		return nil, false
 	}
@@ -247,7 +245,6 @@ func ParseReceiveMoneyMsg(m *slack.MessageEvent) (*ReceiveMoneyMsg, bool) {
 	}
 
 	// make sure this is an actual transfer
-	// TODO: figure out better way to work with banker user ID TODO: dynamically get our user ID
 	if m.User != BankerID || recipientUserID != SelfID {
 		return nil, false
 	}
@@ -362,8 +359,6 @@ func ParseInputMsg(m *slack.MessageEvent) (*InputMsg, bool) {
 	toUser := matches[1]
 	input := matches[2]
 
-	// TODO if m.User != creator of thread (or their buddies, if companions enabled)
-	// TODO: dynamically get @dungeon id
 	if toUser != SelfID {
 		return nil, false
 	}
