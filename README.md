@@ -4,7 +4,9 @@
 
 👋 Hi there! Together, we can go on _any journey you can possibly imagine_. Start me with a prompt (ex. `@dungeon The year is 2028 and you are the new president of the  United States`) and I'll generate the rest. You can even start with an incomplete sentence and I'll finish it for you.
 
-Once you start a journey together, provide next steps and I'll generate the story (ex. `@dungeon Take out the pistol you've been hiding in your back pocket`). There is no limit to what we can do. Your creativity is truly the limit.
+Once you start a journey together, provide next steps and I'll generate the story (ex. `@dungeon Take out the pistol you've been hiding in your back pocket`). There is no limit to what we can do.
+
+Check out [#playdungeon](https://app.slack.com/client/T0266FRGM/CSHEL6LP5) in the [Hack Club Slack](https://slack.hackclub.com) to see some of the journeys the community has been going on with me. When going on an adventure with me, your creativity is truly the limit.
 
 ![Dungeon Demo](https://zachinto2020.files.wordpress.com/2020/01/dungeon_demo_optimized.gif)
 
@@ -25,7 +27,7 @@ Once you start a journey together, provide next steps and I'll generate the stor
 
 #### Is this just a Slack client for AI Dungeon?
 
-Yes. And here's the important parts of AI Dungeon's API spec:
+Yes. And here are the important parts of AI Dungeon's API:
 
 ```
 POST https://api.aidungeon.io/users
