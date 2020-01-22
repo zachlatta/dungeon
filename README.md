@@ -6,7 +6,7 @@
 
 Once you start a journey together, provide next steps and I'll generate the story (ex. `@dungeon Take out the pistol you've been hiding in your back pocket`). There is no limit to what we can do.
 
-If you want to see what I'm capable of, go on the [Hack Club Slack](https://slack.hackclub.com) into [#playdungeon](https://app.slack.com/client/T0266FRGM/CSHEL6LP5) to see some of the journeys the community has gone on with me. With me, your creativity is truly the limit.
+If you want to see what I'm capable of, go on the [Hack Club Slack](https://slack.hackclub.com) into [#playdungeon](https://app.slack.com/client/T0266FRGM/CSHEL6LP5) to see some of the journeys the community has gone on. With me, your creativity is truly the limit.
 
 ![Dungeon Demo](https://zachinto2020.files.wordpress.com/2020/01/dungeon_demo_optimized.gif)
 
