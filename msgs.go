@@ -550,6 +550,10 @@ once we start a journey together, provide next steps and i'll generate the story
 	)
 }
 
+// This is the magical, crucial, important function for processing incoming
+// Slack messages. It's called from the main message processing logic in main().
+//
+// Messages must be added to this to be processed.
 func parseMessage(msg *slack.MessageEvent) Msg {
 	var parsed Msg
 	var ok bool
