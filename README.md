@@ -1,6 +1,9 @@
-# @dungeon bot
+<img src="https://zachinto2020.files.wordpress.com/2020/01/dungeon_logo.png" width="130" alt="Dungeon Logo" align="right">
+👋 Hi there! Together, we can go on _any journey you can possibly imagine_. Start me with a prompt (ex. `@dungeon The year is 2028 and you are the new president of the  United States`) and I'll generate the rest. You can even start with an incomplete sentence and I'll finish it for you.
 
-(extremely WIP, code is gross - will be refactored) Slack bot to interface with AI Dungeon.
+Once you start a journey together, provide next steps and I'll generate the story (ex. `@dungeon Take out the pistol you've been hiding in your back pocket`). There is no limit to what we can do. Your creativity is truly the limit.
+
+![Dungeon Demo](https://zachinto2020.files.wordpress.com/2020/01/dungeon_demo.gif)
 
 Setup:
 
