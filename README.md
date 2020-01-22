@@ -1,3 +1,5 @@
+# `@dungeon`
+
 <img src="https://zachinto2020.files.wordpress.com/2020/01/dungeon_logo.png" width="130" alt="Dungeon Logo" align="right">
 
 👋 Hi there! Together, we can go on _any journey you can possibly imagine_. Start me with a prompt (ex. `@dungeon The year is 2028 and you are the new president of the  United States`) and I'll generate the rest. You can even start with an incomplete sentence and I'll finish it for you.
@@ -6,49 +8,24 @@ Once you start a journey together, provide next steps and I'll generate the stor
 
 ![Dungeon Demo](https://zachinto2020.files.wordpress.com/2020/01/dungeon_demo_optimized.gif)
 
-Setup:
+#### Setup
 
-- Create a new Slack user and get a legacy API token from https://api.slack.com/custom-integrations/legacy-tokens
-- Create AI Dungeon user. Set appropriate email and password environment variables.
-- Set appropriate Airtable environment variables
+- Create a new Slack user and get a legacy API token from https://api.slack.com/custom-integrations/legacy-tokens. Set as `SLACK_LEGACY_TOKEN` in your environment.
+- Create AI Dungeon user. Set `AIDUNGEON_EMAIL` and `AIDUNGEON_PASSWORD` in your environment.
+- Create an Airtable base that adheres to schema (see `db/db.go` to figure out schema) and set `AIRTABLE_API_KEY` and `AIRTABLE_BASE` in your environment.
+- Go into `msgs.go` and update constants for your Slack setup.
+- Build and run it! `$ go build && ./dungeon`
 
-Ideas:
+#### Ideas during creation
 
 - 5GP to play, modeling usage of making Slack bots to earn GP
 - Replies with the dungeon in Slack threads
-- Can make the dungeon run you for only, for you + friends, or for anyone to play. Default to for you only. (so people can comment in real-time in the Slack thread)
-- Can play via DM (but perhaps make it more expensive to do so?)
+- Can make `@dungeon` run you for only, for you + friends, or for anyone to play. Default to for you only. (so people can comment in real-time in the Slack thread)
 - Store data in Airtable
 
-Other asides:
+#### Is this just a Slack client for AI Dungeon?
 
-- @dungeon should invite @banker to the channel if it's not already in it
-- Goroutines to prevent blocking
-- Option to not require @mentions in replies (maybe? makes it way easier to play on mobile)
-- `@dungeon public link` to get a public link to a thread
-- Figure out how to allow private games in DMs
-
-To-dos:
-
-- [x] Most basic flow working
-- [x] Working DB for multiple sessions
-- [x] Support companions
-- [x] Check to make sure correct users are messaging
-- [x] Handle DM flow
-- [x] Handle flow where people only mention `@dungeon` by emoting
-- [x] Handle `@dungeon help`
-- [x] Remove patron storage
-- [x] Better error handling: don't log.Fatal on non-essential errors
-- [x] Goroutines for message processing
-  - [x] Make message timing nice
-- [x] Massive refactor (clearing out TODOs)
-- [x] Deploy to server
-- [ ] Make the README beautiful
-- [ ] #ship it!
-
----
-
-AI Dungeon API:
+Yes. And here's the important parts of AI Dungeon's API spec:
 
 ```
 POST https://api.aidungeon.io/users
