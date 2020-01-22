@@ -59,6 +59,7 @@ type Msg interface {
 	ThreadTimestamp() string
 	Raw() *slack.MessageEvent
 
+	// Handle logic associated with the message
 	Handle(*slack.Client, *slack.RTM, *db.DB, aidungeon.Client)
 }
 
