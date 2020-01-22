@@ -4,7 +4,7 @@
 
 👋 Hi there! Together, we can go on _any journey you can possibly imagine_. Start me with a prompt (ex. `@dungeon The year is 2028 and you are the new president of the  United States`) and I'll generate the rest. You can even start with an incomplete sentence and I'll finish it for you.
 
-Once you start a journey together, provide next steps and I'll generate the story (ex. `@dungeon Take out the pistol you've been hiding in your back pocket`). There is no limit to what we can do.
+Once we start a journey together, provide next steps and I'll generate the story (ex. `@dungeon Take out the pistol you've been hiding in your back pocket`). There is no limit to what we can do.
 
 If you want to see what I'm capable of, go on the [Hack Club Slack](https://slack.hackclub.com) into [#playdungeon](https://app.slack.com/client/T0266FRGM/CSHEL6LP5) to see some of the journeys the community has gone on. With me, your creativity is truly the limit.
 
