@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/nlopes/slack"
 
@@ -30,6 +31,10 @@ const ScenarioIdeas = `here are a few scenario ideas:
 • You are Michael Jackson, a pop star and soldier trying to survive in a world filled with infected zombies everywhere. You have an automatic rifle and a grenade. Your unit lost a lot of men when the infection broke, but you've managed to keep the small town you're stationed near safe for now. You look over the town and think about how things could be better, but then you remember that's what soldiers do; they make sacrifices.`
 
 // HELPERS //
+
+func typing(rtm *slack.RTM, msg Msg) {
+	rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID()))
+}
 
 func threadReply(rtm *slack.RTM, msg Msg, text string) {
 	rtm.SendMessage(rtm.NewOutgoingMessage(
@@ -187,6 +192,10 @@ func (msg StartJourneyMsg) Handle(api *slack.Client, rtm *slack.RTM, dbc *db.DB,
 
 	threadReply(rtm, msg, "_groggily wakes up..._")
 
+	time.Sleep(time.Second / 2)
+	typing(rtm, msg)
+	time.Sleep(time.Second)
+
 	threadReply(rtm, msg, "Ugh... it's been a while. My bones are rough. My bones are weak. Load me up with "+strconv.Itoa(CostToPlay)+"GP and our journey together will make your week.")
 }
 
@@ -283,10 +292,13 @@ func (msg ReceiveMoneyMsg) Handle(api *slack.Client, rtm *slack.RTM, dbc *db.DB,
 		threadReply(rtm, msg, "Ah, now that's a bit better. Let me think on this one...")
 	}
 
+	time.Sleep(2 * time.Second)
+
 	threadReply(rtm, msg, "_:musical_note: elevator music :musical_note:_")
 
-	// indicate we're typing
-	rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID()))
+	time.Sleep(time.Second / 2)
+
+	typing(rtm, msg)
 
 	sessionID, output, err := aidungeonc.CreateSession(session.Prompt)
 	if err != nil {
@@ -305,9 +317,8 @@ func (msg ReceiveMoneyMsg) Handle(api *slack.Client, rtm *slack.RTM, dbc *db.DB,
 		return
 	}
 
-	threadReply(rtm, msg, "_(remember to @mention me in your replies!)_")
-
 	threadReply(rtm, msg, output)
+	threadReply(rtm, msg, "_(remember to @mention me in your replies!)_")
 
 	log.Println("SESSION ID:", sessionID)
 }
@@ -403,8 +414,7 @@ func (msg InputMsg) Handle(api *slack.Client, rtm *slack.RTM, dbc *db.DB, aidung
 		return
 	}
 
-	// indicate we're typing
-	rtm.SendMessage(rtm.NewTypingMessage(msg.ChannelID()))
+	typing(rtm, msg)
 
 	output, err := aidungeonc.Input(session.SessionID, msg.Input)
 	if err != nil {
@@ -525,7 +535,13 @@ func (m HelpMsg) Timestamp() string {
 }
 
 func (m HelpMsg) ThreadTimestamp() string {
-	return m.raw.ThreadTimestamp
+	// if message was in a thread, reply in the existing thread. if it
+	// wasn't, then reply in a new thread
+	if m.raw.ThreadTimestamp != "" {
+		return m.raw.ThreadTimestamp
+	} else {
+		return m.raw.Timestamp
+	}
 }
 
 func (m HelpMsg) Raw() *slack.MessageEvent {
