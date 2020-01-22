@@ -15,6 +15,9 @@ import (
 
 // CONSTANTS //
 
+const SelfID = "USH186XSP"
+const BankerID = "UH50T81A6"
+const PlayDungeonChannelID = "CSHEL6LP5"
 const CostToPlay = 5 // in GP
 const ScenarioIdeas = `here are a few scenario ideas:
 
@@ -129,7 +132,7 @@ func ParseStartJourneyMsg(m *slack.MessageEvent) (*StartJourneyMsg, bool) {
 
 	// if this doesn't look like a start journey msg, skip
 	// TODO: dynamically get our user ID
-	if myUserID != "USH186XSP" || promptText == "" {
+	if myUserID != SelfID || promptText == "" {
 		return nil, false
 	}
 
@@ -236,7 +239,7 @@ func ParseReceiveMoneyMsg(m *slack.MessageEvent) (*ReceiveMoneyMsg, bool) {
 
 	// make sure this is an actual transfer
 	// TODO: figure out better way to work with banker user ID TODO: dynamically get our user ID
-	if m.User != "UH50T81A6" || recipientUserID != "USH186XSP" {
+	if m.User != BankerID || recipientUserID != SelfID {
 		return nil, false
 	}
 
@@ -350,7 +353,7 @@ func ParseInputMsg(m *slack.MessageEvent) (*InputMsg, bool) {
 
 	// TODO if m.User != creator of thread (or their buddies, if companions enabled)
 	// TODO: dynamically get @dungeon id
-	if toUser != "USH186XSP" {
+	if toUser != SelfID {
 		return nil, false
 	}
 
@@ -455,7 +458,7 @@ func ParseDMMsg(m *slack.MessageEvent) (*DMMsg, bool) {
 
 func (msg DMMsg) Handle(api *slack.Client, rtm *slack.RTM, dbc *db.DB, aidungeonc aidungeon.Client) {
 	rtm.SendMessage(rtm.NewOutgoingMessage(
-		`:wave: hi there! you can only play me in public or private channels (not in DMs). just make sure you invite me (and <@`+"UH50T81A6"+`>, so you can pay me) into the channel and then give me a prompt. some of the nice folks in slack made <#`+"CSHEL6LP5"+`>, if you want to play me there.
+		`:wave: hi there! you can only play me in public or private channels (not in DMs). just make sure you invite me (and <@`+BankerID+`>, so you can pay me) into the channel and then give me a prompt. some of the nice folks in slack made <#`+PlayDungeonChannelID+`>, if you want to play me there.
 
 when you give me a prompt, just make sure to @mention my name followed by the scenario you want to start with (ex. `+"`@dungeon The year is 2028 and you are the new president of the United States`"+`). you can even leave an incomplete sentence for me and i'll finish it for you.
 
@@ -487,7 +490,7 @@ func (m MentionMsg) Raw() *slack.MessageEvent {
 }
 
 func ParseMentionMsg(m *slack.MessageEvent) (*MentionMsg, bool) {
-	if strings.TrimSpace(m.Text) == "<@"+"USH186XSP"+">" {
+	if strings.TrimSpace(m.Text) == "<@"+SelfID+">" {
 		return &MentionMsg{
 			Text: m.Text,
 			raw:  m,
@@ -530,7 +533,7 @@ func (m HelpMsg) Raw() *slack.MessageEvent {
 }
 
 func ParseHelpMsg(m *slack.MessageEvent) (*HelpMsg, bool) {
-	if strings.TrimSpace(m.Text) == "<@"+"USH186XSP"+">"+" help" {
+	if strings.TrimSpace(m.Text) == "<@"+SelfID+">"+" help" {
 		return &HelpMsg{
 			Text: m.Text,
 			raw:  m,
