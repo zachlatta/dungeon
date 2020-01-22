@@ -6,7 +6,7 @@
 
 Once you start a journey together, provide next steps and I'll generate the story (ex. `@dungeon Take out the pistol you've been hiding in your back pocket`). There is no limit to what we can do.
 
-Check out [#playdungeon](https://app.slack.com/client/T0266FRGM/CSHEL6LP5) in the [Hack Club Slack](https://slack.hackclub.com) to see some of the journeys the community has been going on with me. When going on an adventure with me, your creativity is truly the limit.
+If you want to see what I'm capable of, go on the [Hack Club Slack](https://slack.hackclub.com) into [#playdungeon](https://app.slack.com/client/T0266FRGM/CSHEL6LP5) to see some of the journeys the community has gone on with me. With me, your creativity is truly the limit.
 
 ![Dungeon Demo](https://zachinto2020.files.wordpress.com/2020/01/dungeon_demo_optimized.gif)
 
@@ -27,7 +27,7 @@ Check out [#playdungeon](https://app.slack.com/client/T0266FRGM/CSHEL6LP5) in th
 
 #### Is this just a Slack client for AI Dungeon?
 
-Yes. And here are the important parts of AI Dungeon's API:
+Yeah. And here are the important parts of AI Dungeon's API:
 
 ```
 POST https://api.aidungeon.io/users
