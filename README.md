@@ -3,7 +3,7 @@
 
 Once you start a journey together, provide next steps and I'll generate the story (ex. `@dungeon Take out the pistol you've been hiding in your back pocket`). There is no limit to what we can do. Your creativity is truly the limit.
 
-![Dungeon Demo](https://zachinto2020.files.wordpress.com/2020/01/dungeon_demo.gif)
+![Dungeon Demo](https://zachinto2020.files.wordpress.com/2020/01/dungeon_demo_optimized.gif)
 
 Setup:
 
