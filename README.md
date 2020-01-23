@@ -21,13 +21,13 @@ If you want to see what I'm capable of, go on the [Hack Club Slack](https://slac
 #### Ideas during creation
 
 - 5GP to play, modeling usage of making Slack bots to earn GP
-- Replies with the dungeon in Slack threads
+- Replies with the storyline in Slack threads
 - Can make `@dungeon` run you for only, for you + friends, or for anyone to play. Default to for you only. (so people can comment in real-time in the Slack thread)
 - Store data in Airtable
 
 #### ...so is this just a Slack client for AI Dungeon?
 
-Yeah. And here are the important parts of AI Dungeon's API:
+Yeah! And here are the important parts of AI Dungeon's API:
 
 ```
 POST https://api.aidungeon.io/users
